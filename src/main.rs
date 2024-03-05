@@ -1,13 +1,14 @@
 use mongodb::{Client, options::{ClientOptions, ResolverConfig}};
-use std::env;
 use std::error::Error;
+use dotenv::dotenv;
 use tokio;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // Load the MongoDB connection string from an environment variable:
-    let client_uri =
-        env::var("MONGODB_URI").expect("You must set the MONGODB_URI environment var!");
+    dotenv().ok();
+    let client_uri = std::env::var("MONGO_URI")
+        .expect("You must set the MONGO_URI environment var!");
 
     // A Client is needed to connect to MongoDB:
     // An extra line of code to work around a DNS issue on Windows:
