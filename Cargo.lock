@@ -1200,6 +1200,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustaurant"
+version = "0.1.0"
+dependencies = [
+ "bson",
+ "chrono",
+ "dotenv",
+ "mongodb",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1840,6 +1852,7 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "untitled"
 version = "0.1.0"
 dependencies = [
@@ -1855,6 +1868,8 @@ dependencies = [
 ]
 
 [[package]]
+=======
+>>>>>>> fe4e89b (fix: env variables)
 name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
