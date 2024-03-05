@@ -26,8 +26,8 @@ services:
   configs3:
     container_name: configs3
     image: mongo
-    command:
-      mongod --configsvr --replSet cfgrs --port 27017 --dbpath /data/db --bind_ip_all
+    command: mongod --configsvr --replSet cfgrs --port 27017 --dbpath /data/db --bind_ip_all
+    volumes:
       - configs3:/data/db
     networks:
       - mongodb-net
