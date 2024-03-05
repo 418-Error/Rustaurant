@@ -1,10 +1,13 @@
 # Create the servers
+#!/usr/bin/bash
 
-sudo docker compose up -d
+set -e
+
+docker compose up -d
 
 # setup the config servers
 
-sudo docker exec -it configs1 mongosh --eval "rs.initiate({
+docker exec -it configs1 mongosh --eval "rs.initiate({
  _id: \"cfgrs\",
  configsvr: true,
  members: [
@@ -14,12 +17,12 @@ sudo docker exec -it configs1 mongosh --eval "rs.initiate({
  ]
 })"
 
-sudo docker exec -it configs1 mongosh --eval "rs.status()"
+docker exec -it configs1 mongosh --eval "rs.status()"
 
 
 # setup the shard servers
 
-sudo docker exec -it shard1s1 mongosh --eval "rs.initiate({
+docker exec -it shard1s1 mongosh --eval "rs.initiate({
  _id: \"shard1rs\",
  members: [
    {_id: 0, host: \"shard1s1\"},
@@ -29,9 +32,9 @@ sudo docker exec -it shard1s1 mongosh --eval "rs.initiate({
 })"
 
 
-sudo docker exec -it shard1s1 mongosh --eval "rs.status()"
+docker exec -it shard1s1 mongosh --eval "rs.status()"
 
 
 # setup the  mongos server
 
-sudo docker exec -it mongos mongosh --eval "sh.addShard(\"shard1rs/shard1s1:27017,shard1s2:27017,shard1s3:27017\")"
+docker exec -it mongos mongosh --eval "sh.addShard(\"shard1rs/shard1s1:27017,shard1s2:27017,shard1s3:27017\")"
