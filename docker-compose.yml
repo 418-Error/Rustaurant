@@ -1,0 +1,93 @@
+version: '3'
+
+networks:
+  mongodb-net:
+    driver: bridge
+
+
+services:
+
+  configs1:
+    container_name: configs1
+    image: mongo
+    command: mongod --configsvr --replSet cfgrs --port 27017 --dbpath /data/db --bind_ip_all
+    ports:
+      - 10001:27017
+    volumes:
+      - configs1:/data/db
+    networks:
+      - mongodb-net
+
+  configs2:
+    container_name: configs2
+    image: mongo
+    command: mongod --configsvr --replSet cfgrs --port 27017 --dbpath /data/db --bind_ip_all
+    ports:
+      - 10002:27017
+    volumes:
+      - configs2:/data/db
+    networks:
+      - mongodb-net
+
+  configs3:
+    container_name: configs3
+    image: mongo
+    command: mongod --configsvr --replSet cfgrs --port 27017 --dbpath /data/db --bind_ip_all
+    ports:
+      - 10003:27017
+    volumes:
+      - configs3:/data/db
+    networks:
+      - mongodb-net
+
+  shard1s1:
+    container_name: shard1s1
+    image: mongo
+    command: mongod --shardsvr --replSet shard1rs --port 27017 --dbpath /data/db --bind_ip_all
+    ports:
+      - 50001:27017
+    volumes:
+      - shard1s1:/data/db
+    networks:
+      - mongodb-net
+
+  shard1s2:
+    container_name: shard1s2
+    image: mongo
+    command: mongod --shardsvr --replSet shard1rs --port 27017 --dbpath /data/db --bind_ip_all
+    ports:
+      - 50002:27017
+    volumes:
+      - shard1s2:/data/db
+    networks:
+      - mongodb-net
+
+  shard1s3:
+    container_name: shard1s3
+    image: mongo
+    command: mongod --shardsvr --replSet shard1rs --port 27017 --dbpath /data/db --bind_ip_all
+    ports:
+      - 50003:27017
+    volumes:
+      - shard1s3:/data/db
+    networks:
+      - mongodb-net
+
+
+  mongos:
+    container_name: mongos
+    image: mongo
+    command: mongos --configdb cfgrs/configs1:27017,configs2:27017,configs3:27017 --port 27017 --bind_ip_all
+    ports:
+      - 30000:27017
+    networks:
+      - mongodb-net
+
+
+volumes:
+  configs1: {}
+  configs2: {}
+  configs3: {}
+  shard1s1: {}
+  shard1s2: {}
+  shard1s3: {}
