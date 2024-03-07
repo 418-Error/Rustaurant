@@ -1,4 +1,4 @@
-use models::restaurant::restaurant::{Restaurant};
+use models::restaurant::restaurant::Restaurant;
 use dotenv::dotenv;
 use mongodb::bson::doc;
 use mongodb::{Client, Collection};
@@ -8,18 +8,12 @@ use tokio;
 mod db;
 mod models;
 use crate::db::db::{client, file_db};
-use csv::StringRecord;
-use dotenv::dotenv;
-use server::server::{lgbt, smoker, wifi};
-use tokio;
+use axum::{
+    routing::{get, post},
+    Router,
+};
 
-use crate::server::server::add_restaurant;
-
-mod models;
-mod server;
-
-#[tokio::main]
-async fn main() {
+async fn launch_server() {
     // Load environment variables from .env file
     dotenv().ok();
     let client: Result<Client, Box<dyn Error>> = client().await;

@@ -1,4 +1,4 @@
 pub mod restaurant;
-pub mod user;
 
 // use restaurant::Restaurant;
+pub mod user;
