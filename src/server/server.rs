@@ -4,8 +4,7 @@ use serde_json::{
     json,
     Value,
 };
-
-use crate::models::restaurant::Restaurant;
+use crate::models::restaurant::restaurant::Restaurant;
 
 pub async fn lgbt() -> String {
     return "Hello, World!, this is the lgbt route".to_string();

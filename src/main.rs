@@ -1,5 +1,8 @@
-<<<<<<< HEAD
 use crate::db::db::{client, file_db};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use csv::StringRecord;
 use dotenv::dotenv;
 use mongodb::bson::doc;
@@ -7,7 +10,14 @@ use mongodb::Client;
 use std::{error::Error, process};
 use tokio;
 
-pub mod db;
+use crate::server::server::{
+    add_restaurant, lgbt, smoker, wifi,
+};
+
+mod auth;
+mod models;
+mod server;
+mod db;
 
 #[tokio::main]
 async fn main() {
@@ -53,19 +63,9 @@ async fn main() {
             .await
             .expect("TODO: panic message")
     );
-=======
-use axum::{routing::{get, post}, Router};
-use dotenv::dotenv;
-use server::server::{lgbt, smoker, wifi};
-use tokio;
+}
 
-use crate::server::server::add_restaurant;
-
-mod models;
-mod server;
-
-#[tokio::main]
-async fn main() {
+async fn launch_server() {
     // Load environment variables from .env file
     dotenv().ok();
     let app = Router::new()
@@ -85,5 +85,4 @@ async fn main() {
     axum::serve(listener, app.into_make_service())
         .await
         .unwrap();
->>>>>>> 5e6e4d6 (feat: prototype router POST+GET)
 }
