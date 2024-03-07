@@ -1,5 +1,5 @@
 use mongodb::{Client, Database};
-use std::{error::Error};
+use std::{error::Error, process};
 use dotenv::dotenv;
 use mongodb::options::{ClientOptions, ResolverConfig};
 use mongodb::bson::doc;
@@ -21,13 +21,21 @@ pub(crate) async fn client() -> Result<Client, Box<dyn Error>>{
 }
 
 pub(crate) async fn file_db(db: Database) -> Result<(), Box<dyn Error>> {
-    let mut rdr = csv::Reader::from_path("OSM_Metropole_restauration_bar.csv")?;
-    for result in rdr.records() {
+    let body = reqwest::get("https://data.montpellier3m.fr/sites/default/files/ressources/OSM_Metropole_restauration_bar.json").await;
+    let response = match body {
+        Ok(response) => response,
+        Err(err) => {
+            println!("Error fetching data: {}", err);
+            process::exit(1);
+        }
+    };
+    let json: serde_json::Value = response.json().await?;
+    for i in json.get("features").unwrap().as_array().unwrap() {
         let mut doc = doc!{};
         let mut previous_key = "".to_string();
         let mut concat: Vec<String> = Vec::new();
-        let record = result?;
-        for i in record[18].rsplit(", "){
+        let tags = i.get("properties").unwrap().get("tags").unwrap().as_str().unwrap();
+        for i in tags.rsplit(", "){
             let elem: Vec<&str>= i.split("=>").collect();
             let is_good = match elem.len() {
                 2 => true,
@@ -46,7 +54,7 @@ pub(crate) async fn file_db(db: Database) -> Result<(), Box<dyn Error>> {
                                 new.insert(split[1].replace("\"",""), concat);
                                 doc.insert(split[0].replace("\"",""), new);
                                 concat = Vec::new();
-                                }
+                            }
                         }
                         else{
                             doc.insert(split[0].replace("\"",""), doc!{split[1].replace("\"",""): concat});
