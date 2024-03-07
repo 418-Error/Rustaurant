@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 use crate::db::db::{client, file_db};
 use csv::StringRecord;
 use dotenv::dotenv;
@@ -52,4 +53,37 @@ async fn main() {
             .await
             .expect("TODO: panic message")
     );
+=======
+use axum::{routing::{get, post}, Router};
+use dotenv::dotenv;
+use server::server::{lgbt, smoker, wifi};
+use tokio;
+
+use crate::server::server::add_restaurant;
+
+mod models;
+mod server;
+
+#[tokio::main]
+async fn main() {
+    // Load environment variables from .env file
+    dotenv().ok();
+    let app = Router::new()
+        .route("/", get(|| async { "Hello, World!" }))
+        .route("/lgbt", get(lgbt))
+        .route("/wifi", get(wifi))
+        .route("/smoker", get(smoker))
+        .route("/restaurant", post(add_restaurant));
+
+    let port = std::env::var("PORT").unwrap_or("3000".to_string());
+    let listen_address = format!("0.0.0.0:{port}");
+
+    let listener = tokio::net::TcpListener::bind(listen_address).await.unwrap();
+
+    std::println!("Server running on port: {port}");
+
+    axum::serve(listener, app.into_make_service())
+        .await
+        .unwrap();
+>>>>>>> 5e6e4d6 (feat: prototype router POST+GET)
 }
