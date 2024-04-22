@@ -12,7 +12,7 @@ use crate::db::db::client;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
-    pub id: ObjectId,
+    pub _id: ObjectId,
     pub username: String,
     pub password: String,
 }
@@ -31,6 +31,13 @@ pub enum RegisterError {
     #[error("Username already exists")]
     UsernameAlreadyExistsError(String),
 }
+
+#[derive(Debug, ThisError)]
+pub enum FindError {
+    #[error("Failed to find user")]
+    FailedToFindUserError(String),
+}
+
 
 impl User {
     pub async fn new(username: String, password: String) -> Result<User, RegisterError> {
@@ -84,12 +91,52 @@ impl User {
 
 
         Ok(User {
-            id: insert_result
+            _id: insert_result
                 .inserted_id
                 .as_object_id()
                 .expect("Failed to insert user into the database."),
             username,
             password,
         })
+    }
+
+    pub async fn find_by_username(username: String) -> Result<User, FindError> {
+        dotenv().ok();
+        let client: Result<Client, Box<dyn Error>> = client().await;
+        if let Err(err) = client {
+            println!("error launching client : {}", err);
+            std::process::exit(1);
+        }
+        let db_client = client.unwrap();
+        let collection: mongodb::Collection<User> =
+            db_client.database("Rustaurant").collection("users");
+
+
+        let filter= doc!{"username": username};
+
+        println!("{:?}", filter);
+
+        let user = match collection
+            .find_one(filter, None)
+            .await {
+            Ok(user) => user,
+            Err(err) => {
+                println!("Failed to find user: {}", err);
+                return Err(FindError::FailedToFindUserError(
+                    format!("Failed to find user: {}", err),
+                ));
+            }
+        };
+
+        println!("{:?}", user);
+
+            
+
+        match user {
+            Some(user) => Ok(user),
+            None => Err(FindError::FailedToFindUserError(
+                "Failed to find user in the database.".to_string(),
+            )),
+        }
     }
 }
