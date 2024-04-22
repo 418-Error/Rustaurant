@@ -1,6 +1,4 @@
-# Create the servers
 #!/usr/bin/bash
-
 set -e
 
 # create network
@@ -25,7 +23,6 @@ docker exec -it configs1 mongosh --eval "rs.initiate({
 
 docker exec -it configs1 mongosh --eval "rs.status()"
 
-
 # setup the shard servers
 
 docker exec -it shard1s1 mongosh --eval "rs.initiate({
@@ -37,9 +34,7 @@ docker exec -it shard1s1 mongosh --eval "rs.initiate({
  ]
 })"
 
-
 docker exec -it shard1s1 mongosh --eval "rs.status()"
-
 
 # setup the  mongos server
 
@@ -47,4 +42,4 @@ docker exec -it mongos mongosh --eval "sh.addShard(\"shard1rs/shard1s1:27017,sha
 
 # add MONGO_URI to .env file
 
-echo "MONGO_URI=mongodb://admin:admin@127.0.0.1:30000" > .env
+echo "MONGO_URI=mongodb://admin:admin@127.0.0.1:30000" >.env

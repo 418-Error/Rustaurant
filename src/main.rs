@@ -4,14 +4,36 @@ use mongodb::bson::doc;
 use mongodb::{Client, Collection};
 use std::{error::Error, process};
 use tokio;
-
-mod db;
-mod models;
 use crate::db::db::{client, file_db};
+use crate::auth::controller::{login, register};
 use axum::{
     routing::{get, post},
     Router,
 };
+
+// use csv::StringRecord;
+// use mongodb::bson::doc;
+// use mongodb::Client;
+// use std::{error::Error, process};
+use tokio;
+use tower_http::cors::{Any, CorsLayer};
+
+use crate::server::server::{lgbt, smoker, wifi};
+
+use tower::ServiceBuilder;
+
+mod auth;
+mod db;
+mod server;
+mod users;
+mod restaurants;
+
+
+#[tokio::main]
+pub async fn main() {
+    // populate_db().await;
+    launch_server().await;
+}
 
 async fn launch_server() {
     // Load environment variables from .env file
@@ -79,7 +101,11 @@ async fn launch_server() {
         .route("/lgbt", get(lgbt))
         .route("/wifi", get(wifi))
         .route("/smoker", get(smoker))
-        .route("/restaurant", post(add_restaurant));
+        .route("/register", post(register))
+        .route("/login", post(login))
+        .layer(
+            ServiceBuilder::new().layer(CorsLayer::new().allow_origin(Any)), // this is a public API
+        );
 
     let port = std::env::var("PORT").unwrap_or("3000".to_string());
     let listen_address = format!("0.0.0.0:{port}");

@@ -421,15 +421,3 @@ pub struct Mhs {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub inscription_date: Option<String>,
 }
-
-// impl Restaurant {
-//     pub async fn create(payload: CreateRestaurantPayload) -> Self {
-//         Self {
-//             name: payload.name,
-//             id: 1,
-//             lgbt: true,
-//             wifi: true,
-//             smoker: true,
-//         }
-//     }
-// }
