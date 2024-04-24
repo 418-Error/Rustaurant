@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::server::server::CreateRestaurantPayload;
+// use crate::server::server::CreateRestaurantPayload;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -422,14 +422,14 @@ pub struct Mhs {
     pub inscription_date: Option<String>,
 }
 
-impl Restaurant {
-    pub async fn create(payload: CreateRestaurantPayload) -> Self {
-        Self {
-            name: payload.name,
-            id: 1,
-            lgbt: true,
-            wifi: true,
-            smoker: true,
-        }
-    }
-}
+// impl Restaurant {
+//     pub async fn create(payload: CreateRestaurantPayload) -> Self {
+//         Self {
+//             name: payload.name,
+//             id: 1,
+//             lgbt: true,
+//             wifi: true,
+//             smoker: true,
+//         }
+//     }
+// }

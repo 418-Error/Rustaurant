@@ -1,27 +1,13 @@
-use crate::db::db::{client, file_db, most_complexe};
+use db::db::{client, file_db};
+use models::restaurant::restaurant::{Restaurant};
 use dotenv::dotenv;
 use mongodb::bson::doc;
 use mongodb::{Client, Collection};
 use std::{error::Error, process};
-use serde::{Deserialize, Serialize};
 use tokio;
 
-pub mod db;
-
-// #[derive(Clone, Debug, Deserialize, Serialize)]
-// struct Record {
-//     #[serde(default, skip_serializing_if = "Option::is_none")]
-//     addr_street: Option<String>,
-//     #[serde(skip_s erializing_if = "Option::is_none")]
-//     addr_housenumber: Option<u64>,
-//     #[serde(default, skip_serializing_if = "Option::is_none")]
-//     name: Option<String>,
-//     #[serde(default, skip_serializing_if = "Option::is_none")]
-//     brand: Option<String>,
-//     #[serde(default, skip_serializing_if = "Option::is_none")]
-//     operator: Option<String>,
-// }
-
+mod db;
+mod models;
 
 #[tokio::main]
 async fn main() {
@@ -51,8 +37,8 @@ async fn main() {
     }
     let collection_names = collections.unwrap();
     for i in collection_names {
-        let collection: Collection<Record> =
-            db_client.database("Rustaurant").collection::<Record>(&*i);
+        let collection: Collection<Restaurant> =
+            db_client.database("Rustaurant").collection::<Restaurant>(&*i);
         println!("Collection: {}", i);
         println!(
             "Restaurants with an outdoor: {}",
@@ -72,4 +58,16 @@ async fn main() {
         let restaurant = collection.find(None, None).await.expect("TODO: panic message");
         println!("{:?}", restaurant.deserialize_current());
     }
+    let new_restaurant = Restaurant {
+        contact: None,
+        name: Option::from("Rustaurant".to_string()),
+        outdoor_seating: Some("yes".to_string()),
+        indoor_seating: Some("yes".to_string()),
+        ..Default::default()
+    };
+    let collection: Collection<Restaurant> =
+        db_client.database("Rustaurant").collection::<Restaurant>("restaurant");
+    collection.insert_one(new_restaurant, None).await.expect("TODO: panic message");
+    let new_restaurants = collection.find(None, None).await.expect("TODO: panic message");
+    println!("the new restaurant: {:?}", new_restaurants.deserialize_current());
 }

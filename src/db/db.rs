@@ -3,8 +3,9 @@ use std::{error::Error, process};
 use dotenv::dotenv;
 use mongodb::options::{ClientOptions, ResolverConfig};
 use mongodb::bson::doc;
+use crate::models::restaurant::restaurant::Restaurant;
 
-pub(crate) async fn client() -> Result<Client, Box<dyn Error>>{
+pub async fn client() -> Result<Client, Box<dyn Error>>{
     // Load the MongoDB connection string from an environment variable:
     dotenv().ok();
     let client_uri = std::env::var("MONGO_URI")
@@ -20,7 +21,7 @@ pub(crate) async fn client() -> Result<Client, Box<dyn Error>>{
     Ok(client)
 }
 
-pub(crate) async fn file_db(db: Database) -> Result<(), Box<dyn Error>> {
+pub async fn file_db(db: Database) -> Result<(), Box<dyn Error>> {
     let body = reqwest::get("https://data.montpellier3m.fr/sites/default/files/ressources/OSM_Metropole_restauration_bar.json").await;
     let response = match body {
         Ok(response) => response,
@@ -105,7 +106,19 @@ pub(crate) async fn file_db(db: Database) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub(crate) async fn most_complexe() -> Result<mongodb::bson::Document, Box<dyn Error>>{
+pub async fn add_restaurant(db: Database, restaurant: Restaurant) -> Result<(), Box<dyn Error>> {
+    let mut collection = "others";
+    if !restaurant.amenity.is_none() {
+        collection = restaurant.amenity.as_ref().unwrap();
+    }
+    let db_collection = db.collection(collection);
+    db_collection.insert_one(restaurant, None).await?;
+    Ok(())
+}
+
+
+
+pub async fn most_complexe() -> Result<mongodb::bson::Document, Box<dyn Error>>{
     let body = reqwest::get("https://data.montpellier3m.fr/sites/default/files/ressources/OSM_Metropole_restauration_bar.json").await;
     let response = match body {
         Ok(response) => response,
