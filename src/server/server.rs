@@ -1,7 +1,4 @@
-use crate::restaurants::model::Restaurant;
-use axum::Json;
 use serde::Deserialize;
-use serde_json::{json, Value};
 
 pub async fn lgbt() -> String {
     return "Hello, World!, this is the lgbt route".to_string();

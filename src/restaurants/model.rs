@@ -1,6 +1,11 @@
+use crate::db::db::client;
+use axum::Json;
+use bson::doc;
+use dotenv::dotenv;
+use mongodb::{error::Error as MongoError, results::InsertOneResult, Client};
 use serde::{Deserialize, Serialize};
-
-// use crate::server::server::CreateRestaurantPayload;
+use serde_json::{to_string, Value};
+use std::{borrow::Borrow, error::Error};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -420,4 +425,90 @@ pub struct Mhs {
     #[serde(rename = "inscription_date")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub inscription_date: Option<String>,
+}
+
+impl Restaurant {
+    pub async fn new(restaurant: Restaurant) -> Result<InsertOneResult, MongoError> {
+        dotenv().ok();
+        let client: Result<Client, Box<dyn Error>> = client().await;
+        if let Err(err) = client {
+            println!("error launching client : {}", err);
+            std::process::exit(1);
+        }
+        let db_client = client.unwrap();
+        let collection: mongodb::Collection<Restaurant> = db_client
+            .database("Rustaurant")
+            .collection(get_restaurant_collection(restaurant.clone()).as_str());
+
+        let insert_result = collection.insert_one(restaurant, None).await;
+        insert_result
+    }
+
+    pub async fn find_by_kind(name: String, kind: String) -> Result<Vec<Restaurant>, MongoError> {
+        dotenv().ok();
+        let client: Result<Client, Box<dyn Error>> = client().await;
+        if let Err(err) = client {
+            println!("error launching client : {}", err);
+            std::process::exit(1);
+        }
+        let db_client = client.unwrap();
+        let collection: mongodb::Collection<Restaurant> =
+            db_client.database("Rustaurant").collection(kind.as_str());
+        let filter = doc! { "name": name };
+        let query_result = collection.find(filter, None).await;
+        let mut restaurants = Vec::new();
+        match query_result {
+            Ok(mut cursor) => {
+                while cursor.advance().await? {
+                    let restaurant = cursor.deserialize_current();
+                    match restaurant {
+                        Ok(restaurant) => restaurants.push(restaurant),
+                        Err(err) => {
+                            println!("Error getting restaurant: {}", err);
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                println!("Error getting restaurant: {}", err);
+            }
+        }
+        Ok(restaurants)
+    }
+
+    pub async fn find_by_name(name: String) -> Result<Vec<Restaurant>, MongoError> {
+        let collections = vec![
+            "restaurant".to_string(),
+            "bar".to_string(),
+            "pub".to_string(),
+            "cafe".to_string(),
+        ];
+
+        let mut restaurants = Vec::new();
+
+        for collection in collections.iter() {
+            let result = Restaurant::find_by_kind(name.clone(), collection.clone()).await;
+            match result {
+                Ok(mut restaurant) => {
+                    restaurants.append(&mut restaurant);
+                }
+                Err(err) => return Err(err)
+            }
+        }
+        Ok(restaurants)
+    }
+}
+
+fn get_restaurant_collection(restaurant: Restaurant) -> String {
+    let restaurant_kind = restaurant.amenity;
+    match restaurant_kind {
+        Some(kind) => match kind.as_str() {
+            "restaurant" => "restaurant".to_string(),
+            "bar" => "bar".to_string(),
+            "pub" => "pub".to_string(),
+            "cafe" => "cafe".to_string(),
+            _ => "others".to_string(),
+        },
+        None => "others".to_string(),
+    }
 }
