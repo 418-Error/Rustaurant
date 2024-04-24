@@ -1,6 +1,5 @@
 use std::error::Error;
 
-use serde_json::error;
 use thiserror::Error as ThisError;
 
 use bson::{doc, oid::ObjectId};
@@ -75,8 +74,6 @@ impl User {
             password: clone_password,
         };
 
-
-
         let insert_result = match collection
             .insert_one(user, None)
             .await
@@ -88,7 +85,6 @@ impl User {
                 ));
             }
         };
-
 
         Ok(User {
             _id: insert_result
@@ -129,8 +125,6 @@ impl User {
         };
 
         println!("{:?}", user);
-
-            
 
         match user {
             Some(user) => Ok(user),

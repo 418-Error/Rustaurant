@@ -1510,6 +1510,7 @@ dependencies = [
  "chrono",
  "csv",
  "dotenv",
+ "futures-util",
  "hmac",
  "http 1.1.0",
  "jsonwebtoken",

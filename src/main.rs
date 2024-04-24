@@ -1,5 +1,7 @@
 use crate::auth::controller::{login, register};
+use crate::auth::middleware::auth_middleware;
 use crate::restaurants::contoller::get_restaurant;
+use axum::middleware;
 use axum::{
     routing::{get, post},
     Router,
@@ -24,19 +26,20 @@ mod users;
 
 #[tokio::main]
 pub async fn main() {
-    run_migration().await;
+    // run_migration().await;
     launch_server().await;
 }
 
 async fn launch_server() {
     // Load environment variables from .env file
     let app = Router::new()
+        .route("/restaurant", get(get_restaurant))
+        .route_layer(middleware::from_fn(auth_middleware))
         .route("/", get(|| async { "Hello, World!" }))
         .route("/register", post(register))
         .route("/login", post(login))
-        .route("/restaurant", get(get_restaurant))
         .layer(
-            ServiceBuilder::new().layer(CorsLayer::new().allow_origin(Any)), // this is a public API
+            ServiceBuilder::new().layer(CorsLayer::new().allow_origin(Any)),
         );
 
     let port = std::env::var("PORT").unwrap_or("3000".to_string());

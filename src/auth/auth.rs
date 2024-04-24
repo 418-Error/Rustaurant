@@ -1,5 +1,5 @@
 use chrono::Utc;
-use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+use jsonwebtoken::{encode, Algorithm, DecodingKey, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
@@ -35,4 +35,14 @@ pub fn create_jwt(username: &str) -> Result<String, JWTTokenCreationError> {
         &EncodingKey::from_secret(jwt_secret.as_bytes()),
     )
     .map_err(|_| JWTTokenCreationError)
+}
+
+pub fn verify_token(token: &str) -> Result<String, jsonwebtoken::errors::Error> {
+    let jwt_secret = std::env::var("JWT_KEY").unwrap_or("none".to_string());
+    let token_data = jsonwebtoken::decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(jwt_secret.as_bytes()),
+        &jsonwebtoken::Validation::new(Algorithm::HS512),
+    )?;
+    Ok(token_data.claims.sub)
 }
