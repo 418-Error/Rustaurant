@@ -50,3 +50,10 @@ pub async fn get_restaurant(Query(params): Query<HashMap<String, String>>) -> Re
         Err(_) => return Err(StatusCode::NOT_FOUND),
     }
 }
+
+pub async fn new_restaurant(Json(restaurant): Json<Restaurant>) -> Result<Json<Value>, StatusCode> {
+    match restaurant.save().await {
+        Ok(_) => Ok(Json(serde_json::json!({"message": "Restaurant created"}))),
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}

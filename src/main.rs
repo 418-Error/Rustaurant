@@ -1,6 +1,6 @@
 use crate::auth::controller::{login, register};
 use crate::auth::middleware::auth_middleware;
-use crate::restaurants::contoller::get_restaurant;
+use crate::restaurants::contoller::{get_restaurant, new_restaurant};
 use axum::middleware;
 use axum::{
     routing::{get, post},
@@ -15,8 +15,6 @@ use tokio;
 use tower_http::cors::{Any, CorsLayer};
 
 use tower::ServiceBuilder;
-
-use crate::db::db::run_migration;
 
 mod auth;
 mod db;
@@ -33,7 +31,7 @@ pub async fn main() {
 async fn launch_server() {
     // Load environment variables from .env file
     let app = Router::new()
-        .route("/restaurant", get(get_restaurant))
+        .route("/restaurant", get(get_restaurant).post(new_restaurant))
         .route_layer(middleware::from_fn(auth_middleware))
         .route("/", get(|| async { "Hello, World!" }))
         .route("/register", post(register))

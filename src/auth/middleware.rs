@@ -6,7 +6,6 @@ pub async fn auth_middleware(
     request: Request,
     next: Next
 ) -> Response {
-    println!("Auth middleware");
     let token = match request.headers().get(http::header::AUTHORIZATION) {
         Some(token) => {
             // Remove the "Bearer " prefix

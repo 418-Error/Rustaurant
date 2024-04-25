@@ -428,7 +428,7 @@ pub struct Mhs {
 }
 
 impl Restaurant {
-    pub async fn new(restaurant: Restaurant) -> Result<InsertOneResult, MongoError> {
+    pub async fn save(&self) -> Result<InsertOneResult, MongoError> {
         dotenv().ok();
         let client: Result<Client, Box<dyn Error>> = client().await;
         if let Err(err) = client {
@@ -438,9 +438,9 @@ impl Restaurant {
         let db_client = client.unwrap();
         let collection: mongodb::Collection<Restaurant> = db_client
             .database("Rustaurant")
-            .collection(get_restaurant_collection(restaurant.clone()).as_str());
+            .collection(get_restaurant_collection(self.clone()).as_str());
 
-        let insert_result = collection.insert_one(restaurant, None).await;
+        let insert_result = collection.insert_one(self, None).await;
         insert_result
     }
 
