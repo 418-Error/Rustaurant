@@ -1,10 +1,8 @@
 use crate::db::db::client;
-use axum::Json;
 use bson::doc;
 use dotenv::dotenv;
 use mongodb::{error::Error as MongoError, results::InsertOneResult, Client};
 use serde::{Deserialize, Serialize};
-use serde_json::{to_string, Value};
 use std::{borrow::Borrow, error::Error};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -502,13 +500,7 @@ impl Restaurant {
 fn get_restaurant_collection(restaurant: Restaurant) -> String {
     let restaurant_kind = restaurant.amenity;
     match restaurant_kind {
-        Some(kind) => match kind.as_str() {
-            "restaurant" => "restaurant".to_string(),
-            "bar" => "bar".to_string(),
-            "pub" => "pub".to_string(),
-            "cafe" => "cafe".to_string(),
-            _ => "others".to_string(),
-        },
+        Some(kind) => kind.to_string(),
         None => "others".to_string(),
     }
 }

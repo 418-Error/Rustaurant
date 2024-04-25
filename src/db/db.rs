@@ -1,7 +1,7 @@
 use dotenv::dotenv;
 use mongodb::bson::doc;
 use mongodb::options::{ClientOptions, ResolverConfig};
-use mongodb::{Client, Collection, Database};
+use mongodb::{Client, Database};
 use std::{error::Error, process};
 
 use crate::restaurants::model::Restaurant;
@@ -26,13 +26,13 @@ pub(crate) async fn run_migration() {
     dotenv().ok();
     let client: Result<Client, Box<dyn Error>> = client().await;
     if let Err(err) = client {
-        println!("error running example: {}", err);
+        println!("error getting mongo client: {}", err);
         process::exit(1);
     }
     let db_client = client.unwrap();
     let collections = db_client.database("Rustaurant").list_collection_names(None).await;
     if let Err(err) = collections {
-        println!("error running example: {}", err);
+        println!("error getting database: {}", err);
         process::exit(1);
     }
     let collection_names = collections.unwrap();
@@ -42,47 +42,9 @@ pub(crate) async fn run_migration() {
             .await
             .expect("Failed to load data into the database.");
     }
-    let collections = db_client.database("Rustaurant").list_collection_names(None).await;
-    if let Err(err) = collections {
-        println!("error running example: {}", err);
-        process::exit(1);
+    else { 
+        println!("Database already exists");
     }
-    let collection_names = collections.unwrap();
-    for i in collection_names {
-        let collection: Collection<Restaurant> =
-            db_client.database("Rustaurant").collection::<Restaurant>(&*i);
-        println!("Collection: {}", i);
-        println!(
-            "Restaurants with an outdoor: {}",
-            collection
-                .count_documents(doc! {"outdoor_seating": "yes"}, None)
-                .await
-                .expect("TODO: panic message")
-        );
-        println!(
-            "Restaurants without an outdoor: {}",
-            collection
-                .count_documents(doc! {"outdoor_seating": null}, None)
-                .await
-                .expect("TODO: panic message")
-        );
-        println!("print a restaurant in this collection: ");
-        let restaurant = collection.find(None, None).await.expect("TODO: panic message");
-        println!("{:?}", restaurant.deserialize_current());
-    }
-    let new_restaurant = Restaurant {
-        contact: None,
-        name: Option::from("Rustaurant".to_string()),
-        outdoor_seating: Some("yes".to_string()),
-        indoor_seating: Some("yes".to_string()),
-        ..Default::default()
-    };
-    let collection: Collection<Restaurant> =
-        db_client.database("Rustaurant").collection::<Restaurant>("restaurant");
-    collection.insert_one(new_restaurant, None).await.expect("TODO: panic message");
-    let new_restaurants = collection.find(None, None).await.expect("TODO: panic message");
-    println!("the new restaurant: {:?}", new_restaurants.deserialize_current());
-
 }
 
 pub(crate) async fn file_db(db: Database) -> Result<(), Box<dyn Error>> {
