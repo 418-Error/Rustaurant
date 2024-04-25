@@ -1,5 +1,4 @@
 use std::error::Error;
-
 use thiserror::Error as ThisError;
 
 use bson::{doc, oid::ObjectId};
