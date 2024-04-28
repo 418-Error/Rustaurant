@@ -1,11 +1,13 @@
-use crate::db::db::client;
-use bson::{doc, oid::ObjectId};
+use bson::{doc, oid::ObjectId, to_bson, to_document, Document};
 use dotenv::dotenv;
-use mongodb::{error::Error as MongoError, options::SessionOptions, results::{DeleteResult, InsertOneResult}, Client, ClientSession};
+use mongodb::{error::Error as MongoError, options::SessionOptions, results::{DeleteResult, InsertOneResult, UpdateResult}, Client, ClientSession};
 use serde::{Deserialize, Serialize};
+use tracing_subscriber::filter;
 use std::{ error::Error};
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+use super::controller::GetRestaurantPayload;
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, )]
 #[serde(rename_all = "camelCase")]
 pub struct Restaurant {
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "_id")]
@@ -434,39 +436,20 @@ impl Restaurant {
         self.osm_version = Some("0".to_string());
         self.osm_user = Some(username);
 
+        let collection = self.amenity.clone().map_or("others".to_string(), |amenity| amenity);
+
         let db_client = session.client();
         let collection: mongodb::Collection<Restaurant> = db_client
             .database("Rustaurant")
-            .collection(get_restaurant_collection(self.clone()).as_str());
+            .collection(&collection);
 
         let insert_result = collection.insert_one(self, None).await;
         insert_result
     }
 
     pub async fn find_by_kind(name: String, kind: String, session: &mut ClientSession) -> Result<Vec<Restaurant>, MongoError> {
-        let db_client = session.client();
-        let collection: mongodb::Collection<Restaurant> =
-            db_client.database("Rustaurant").collection(kind.as_str());
         let filter = doc! { "name": name };
-        let query_result = collection.find(filter, None).await;
-        let mut restaurants = Vec::new();
-        match query_result {
-            Ok(mut cursor) => {
-                while cursor.advance().await? {
-                    let restaurant = cursor.deserialize_current();
-                    match restaurant {
-                        Ok(restaurant) => restaurants.push(restaurant),
-                        Err(err) => {
-                            println!("Error getting restaurant: {}", err);
-                        }
-                    }
-                }
-            }
-            Err(err) => {
-                println!("Error getting restaurant: {}", err);
-            }
-        }
-        Ok(restaurants)
+        Restaurant::find(filter, kind, session).await
     }
 
     pub async fn find_by_name(name: String, session: &mut ClientSession) -> Result<Vec<Restaurant>, MongoError> {
@@ -491,6 +474,32 @@ impl Restaurant {
         Ok(restaurants)
     }
 
+    pub async fn find(filter: Document, collection: String, session: &mut ClientSession) -> Result<Vec<Restaurant>, MongoError> {
+        let db_client = session.client();
+        let collection: mongodb::Collection<Restaurant> = db_client
+            .database("Rustaurant")
+            .collection(&collection);
+        let query_result = collection.find(filter, None).await;
+        let mut restaurants = Vec::new();
+        match query_result {
+            Ok(mut cursor) => {
+                while cursor.advance().await? {
+                    let restaurant = cursor.deserialize_current();
+                    match restaurant {
+                        Ok(restaurant) => restaurants.push(restaurant),
+                        Err(err) => {
+                            println!("Error getting restaurant: {}", err);
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                println!("Error getting restaurant: {}", err);
+            }
+        }
+        Ok(restaurants)
+    }
+
     pub async fn delete(&self, session: &mut ClientSession) -> Result<DeleteResult, MongoError> {
         if self.name.is_none() {
             return Err(MongoError::from(std::io::Error::new(
@@ -499,27 +508,76 @@ impl Restaurant {
             )));
         }
         let db_client = session.client();
+        let name = self.name.clone().map_or("".to_string(), |name| name);
+        let filter = doc! { "name": self.name.clone().unwrap() };
         let collection: mongodb::Collection<Restaurant> = db_client
             .database("Rustaurant")
-            .collection(get_restaurant_collection(self.clone()).as_str());
-        let name = self.name.clone().map_or("".to_string(), |name| name);
+            .collection(find_restaurant_collection(filter, session).await.as_str());
         println!("{:?}", name);
         let filter = doc! { "name": name };
         let delete_result = collection.delete_many(filter, None).await;
         delete_result
     }
+
+    pub async fn update(mut self, session: &mut ClientSession) -> Result<UpdateResult, MongoError> {
+        let id = self.id.clone().unwrap();
+        let filter_id = doc! { "_id": id};
+        println!("{:?}", filter_id);
+
+        let collection_name = find_restaurant_collection(filter_id.clone(), session).await;
+
+        let db_client = session.client();
+
+        let restaurant = Restaurant::find(filter_id.clone(), collection_name.clone(), session).await;
+
+        println!("{:?}", restaurant);
+
+        let restaurant = match restaurant {
+            Ok(restaurants) => {
+                if restaurants.len() == 0 {
+                    return Err(MongoError::from(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        "Restaurant not found",
+                    )));
+                }
+                restaurants.get(0).unwrap().clone()
+            }
+            Err(err) => return Err(err),
+        };
+
+        self.osm_timestamp = Some(chrono::Utc::now().to_string());
+        self.osm_version = Some(restaurant.osm_version.clone().unwrap());
+        let collection: mongodb::Collection<Restaurant> = db_client
+            .database("Rustaurant")
+            .collection(&collection_name);
+        let to_doc = to_document(&self).unwrap();
+        let update = doc! { "$set": to_doc };
+        let update_result = collection.update_one(filter_id, update, None).await;
+        update_result
+    }
 }
 
-fn get_restaurant_collection(restaurant: Restaurant) -> String {
-    let restaurant_kind = restaurant.amenity;
-    match restaurant_kind {
-        Some(kind) => match kind.as_str() {
-            "restaurant" => "restaurant".to_string(),
-            "bar" => "bar".to_string(),
-            "pub" => "pub".to_string(),
-            "cafe" => "cafe".to_string(),
-            _ => "others".to_string(),
-        },
-        None => "others".to_string(),
+async fn find_restaurant_collection(filter: Document, session: &mut ClientSession) -> String {
+    let collection_names = get_collections(session).await;
+    let db_client = session.client();
+    let db = db_client.database("Rustaurant");
+    for collection_name in collection_names.iter() {
+        let collection: mongodb::Collection<Restaurant> = db.collection(collection_name);
+        let query_result = collection.find_one(filter.clone(), None).await;
+        match query_result {
+            Ok(result) => match result {
+                Some(_) => return collection_name.to_string(),
+                None => continue,
+            },
+            Err(_) => continue,
+        }
     }
+    "others".to_string()
+}
+
+async fn get_collections(session: &mut ClientSession) -> Vec<String> {
+    let db_client = session.client();
+    let db = db_client.database("Rustaurant");
+    let collections = db.list_collection_names(None).await.unwrap();
+    collections
 }

@@ -151,3 +151,49 @@ pub async fn delete_restaurant(Json(restaurant): Json<Restaurant>) -> Result<Jso
     };
     results
 }
+
+pub async fn update_restaurant(Json(restaurant): Json<Restaurant>) -> Result<Json<Value>, StatusCode> {
+    let client = client().await;
+    if let Err(err) = client {
+        println!("{:?}", err);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+    let mut session = match client.unwrap().start_session(None).await {
+        Ok(session) => session,
+        Err(err) => {
+            println!("Error starting session {:}", err);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        },
+    };
+
+    if restaurant.id.is_none() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    if !restaurant.osm_timestamp.is_none() || !restaurant.osm_version.is_none() || !restaurant.osm_changeset.is_none() || !restaurant.osm_user.is_none() || !restaurant.osm_uid.is_none() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    session.start_transaction(None).await.unwrap();
+    let results = match restaurant.update(&mut session).await {
+        Ok(result) => {
+            println!("Restaurant updated {:?}", result);
+            if result.modified_count == 0 {
+                return Err(StatusCode::NOT_FOUND);
+            }
+            Ok(Json(serde_json::json!({"message": "Restaurant updated"})))
+        },
+        Err(err) => {
+            println!("Error updating restaurant {:?}", err);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR)
+        },
+    };
+
+    match session.commit_transaction().await {
+        Ok(_) => (),
+        Err(err) => {
+            println!("Error committing transaction {:?}", err);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR)
+        },
+    };
+    results
+}

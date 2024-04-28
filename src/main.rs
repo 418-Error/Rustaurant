@@ -1,15 +1,12 @@
 use crate::auth::controller::{login, register};
-use crate::db::db::create_indexes;
-use dotenv::dotenv;
 use crate::auth::middleware::auth_middleware;
-use crate::restaurants::contoller::{delete_restaurant, get_restaurant, new_restaurant};
+use crate::restaurants::controller::{delete_restaurant, get_restaurant, new_restaurant, update_restaurant};
 use axum::middleware;
 use axum::{
     routing::{get, post},
     Router,
 };
 
-use db::db::{client, file_db, run_migration};
 use tokio;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -48,7 +45,7 @@ pub async fn main() {
 async fn launch_server() {
     // Load environment variables from .env file
     let app = Router::new()
-        .route("/restaurant", post(new_restaurant).get(get_restaurant).delete(delete_restaurant))
+        .route("/restaurant", post(new_restaurant).get(get_restaurant).delete(delete_restaurant).patch(update_restaurant))
         .route_layer(middleware::from_fn(auth_middleware))
         .route("/", get(|| async { "Hello, World!" }))
         .route("/register", post(register))
