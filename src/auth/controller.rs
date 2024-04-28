@@ -14,20 +14,25 @@ pub async fn login(Json(payload): Json<LoginPayload>) -> Result<Json<Value>, Sta
     let username = payload.username;
     let password = payload.password;
 
+    let mut now = chrono::Utc::now();
     let user = UserService::find(username.clone()).await;
+    println!("Search user took {:?}", chrono::Utc::now() - now);
 
     let user = match user {
         Ok(user) => user,
         Err(_) => return Err(StatusCode::UNAUTHORIZED),
     };
-
+    now = chrono::Utc::now();
     let is_valid = UserService::verify_password(user, password).await;
 
+    println!("Hash comparison took {:?}", chrono::Utc::now() - now);
     if !is_valid {
         return Err(StatusCode::UNAUTHORIZED);
     }
 
+    now = chrono::Utc::now();
     let token = create_jwt(&username.as_str());
+    println!("Token generation took {:?}", chrono::Utc::now() - now);
     println!("{:?}", token);
     let response_token = match token {
         Ok(token) => token,

@@ -1,15 +1,15 @@
 use crate::db::db::client;
-use axum::Json;
-use bson::doc;
+use bson::{doc, oid::ObjectId};
 use dotenv::dotenv;
-use mongodb::{error::Error as MongoError, results::InsertOneResult, Client};
+use mongodb::{error::Error as MongoError, results::{DeleteResult, InsertOneResult}, Client};
 use serde::{Deserialize, Serialize};
-use serde_json::{to_string, Value};
-use std::{borrow::Borrow, error::Error};
+use std::{ error::Error};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Restaurant {
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "_id")]
+    pub id: Option<ObjectId>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contact: Option<Contact>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -428,7 +428,12 @@ pub struct Mhs {
 }
 
 impl Restaurant {
-    pub async fn save(&self) -> Result<InsertOneResult, MongoError> {
+    pub async fn save(mut self, username: String) -> Result<InsertOneResult, MongoError> {
+        self.osm_timestamp = Some(chrono::Utc::now().to_string());
+        self.osm_changeset = Some("0".to_string());
+        self.osm_version = Some("0".to_string());
+        self.osm_user = Some(username);
+
         dotenv().ok();
         let client: Result<Client, Box<dyn Error>> = client().await;
         if let Err(err) = client {
@@ -492,10 +497,34 @@ impl Restaurant {
                 Ok(mut restaurant) => {
                     restaurants.append(&mut restaurant);
                 }
-                Err(err) => return Err(err)
+                Err(err) => return Err(err),
             }
         }
         Ok(restaurants)
+    }
+
+    pub async fn delete(&self) -> Result<DeleteResult, MongoError> {
+        if self.name.is_none() {
+            return Err(MongoError::from(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "name is required",
+            )));
+        }
+        dotenv().ok();
+        let client: Result<Client, Box<dyn Error>> = client().await;
+        if let Err(err) = client {
+            println!("error launching client : {}", err);
+            std::process::exit(1);
+        }
+        let db_client = client.unwrap();
+        let collection: mongodb::Collection<Restaurant> = db_client
+            .database("Rustaurant")
+            .collection(get_restaurant_collection(self.clone()).as_str());
+        let name = self.name.clone().map_or("".to_string(), |name| name);
+        println!("{:?}", name);
+        let filter = doc! { "name": name };
+        let delete_result = collection.delete_one(filter, None).await;
+        delete_result
     }
 }
 

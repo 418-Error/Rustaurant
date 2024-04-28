@@ -1,16 +1,15 @@
 use crate::auth::controller::{login, register};
+use crate::db::db::create_indexes;
+use dotenv::dotenv;
 use crate::auth::middleware::auth_middleware;
-use crate::restaurants::contoller::{get_restaurant, new_restaurant};
+use crate::restaurants::contoller::{delete_restaurant, get_restaurant, new_restaurant};
 use axum::middleware;
 use axum::{
     routing::{get, post},
     Router,
 };
 
-// use csv::StringRecord;
-// use mongodb::bson::doc;
-// use mongodb::Client;
-// use std::{error::Error, process};
+use db::db::{client, file_db, run_migration};
 use tokio;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -24,14 +23,32 @@ mod users;
 
 #[tokio::main]
 pub async fn main() {
-    // run_migration().await;
+    // dotenv().ok();
+    // let client = client().await;
+    // if let Err(err) = client {
+    //     println!("error launching client : {}", err);
+    //     std::process::exit(1);
+    // }
+
+    // let db_client = client.unwrap().database("Rustaurant");
+    // match file_db(db_client).await {
+    //     Ok(_) => {
+    //         create_indexes().await;
+    //         println!("Database connected")
+    //     },
+    //     Err(err) => {
+    //         println!("error connecting to database : {}", err);
+    //         std::process::exit(1);
+    //     }
+    // }
+
     launch_server().await;
 }
 
 async fn launch_server() {
     // Load environment variables from .env file
     let app = Router::new()
-        .route("/restaurant", get(get_restaurant).post(new_restaurant))
+        .route("/restaurant", post(new_restaurant).get(get_restaurant).delete(delete_restaurant))
         .route_layer(middleware::from_fn(auth_middleware))
         .route("/", get(|| async { "Hello, World!" }))
         .route("/register", post(register))

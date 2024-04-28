@@ -1,7 +1,8 @@
 use std::collections::HashMap;
+use crate::auth::auth::verify_token;
 
 use axum::{extract::Query, Json};
-use http::StatusCode;
+use http::{HeaderMap, StatusCode};
 use mongodb::error::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -37,13 +38,8 @@ pub async fn get_restaurant(Query(params): Query<HashMap<String, String>>) -> Re
         restaurants = Restaurant::find_by_kind(name, kind).await;
     }
 
-
     match restaurants {
         Ok(restaurants) => {
-            // let mut vec_response = Vec::new();
-            // for restaurant in restaurants.iter() {
-            //     vec_response.push(restaurant.serialize().unwrap());
-            // }
             Ok(Json(serde_json::to_value(&restaurants).unwrap()))
             
         },
@@ -51,9 +47,39 @@ pub async fn get_restaurant(Query(params): Query<HashMap<String, String>>) -> Re
     }
 }
 
-pub async fn new_restaurant(Json(restaurant): Json<Restaurant>) -> Result<Json<Value>, StatusCode> {
-    match restaurant.save().await {
+pub async fn new_restaurant(headers: HeaderMap, Json(restaurant): Json<Restaurant>) -> Result<Json<Value>, StatusCode> {
+    let auth = match headers.get(http::header::AUTHORIZATION) {
+        Some(auth) => auth.to_str().unwrap(),
+        None => return Err(StatusCode::UNAUTHORIZED),
+    };
+    let auth = match auth.split_whitespace().last() {
+        Some(auth) => auth,
+        None => return Err(StatusCode::UNAUTHORIZED),
+    };
+
+    let username = match verify_token(auth) {
+        Ok(username) => username,
+        Err(_) => return Err(StatusCode::UNAUTHORIZED),
+    };
+
+    println!("{:?}", username);
+
+    match restaurant.save(username).await {
         Ok(_) => Ok(Json(serde_json::json!({"message": "Restaurant created"}))),
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+
+pub async fn delete_restaurant(Json(restaurant): Json<Restaurant>) -> Result<Json<Value>, StatusCode> {
+    match restaurant.delete().await {
+        Ok(result) => {
+            println!("Restaurant deleted {:?}", result);
+            if result.deleted_count == 0 {
+                return Err(StatusCode::NOT_FOUND);
+            }
+            Ok(Json(serde_json::json!({"message": "Restaurant deleted"})))
+        },
         Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }

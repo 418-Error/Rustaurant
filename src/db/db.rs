@@ -1,7 +1,8 @@
 use dotenv::dotenv;
 use mongodb::bson::doc;
 use mongodb::options::{ClientOptions, ResolverConfig};
-use mongodb::{Client, Collection, Database};
+use mongodb::{Client, Collection, Database, IndexModel};
+use std::collections::HashMap;
 use std::{error::Error, process};
 
 use crate::restaurants::model::Restaurant;
@@ -22,7 +23,46 @@ pub async fn client() -> Result<Client, Box<dyn Error>> {
     Ok(client)
 }
 
-pub(crate) async fn run_migration() {
+pub async fn create_indexes() {
+    dotenv().ok();
+    let collection_indexes = HashMap::from([
+        ("bar", vec!["name"]),
+        ("cafe", vec!["name"]),
+        ("fast_food", vec!["name"]),
+        ("ice_cream", vec!["name"]),
+        ("others", vec!["name"]),
+        ("pub", vec!["name"]),
+        ("restaurant", vec!["name"]),
+        ("users", vec!["username"]),
+    ]);
+
+    let client: Result<Client, Box<dyn Error>> = client().await;
+    if let Err(err) = client {
+        println!("error running example: {}", err);
+        process::exit(1);
+    }
+    let db_client = client.unwrap();
+    let collections = db_client.database("Rustaurant").list_collection_names(None).await;
+    if let Err(err) = collections {
+        println!("error running example: {}", err);
+        process::exit(1);
+    }
+    let collection_names = collections.unwrap();
+    for i in collection_names {
+        let collection: Collection<Restaurant> =
+            db_client.database("Rustaurant").collection::<Restaurant>(&*i);
+        let indexes = collection_indexes.get(&*i);
+        for index in indexes.unwrap() {
+            let index_model = IndexModel::builder().keys(doc! {*index: 1}).build();
+            collection
+                .create_index(index_model, None)
+                .await
+                .expect("TODO: panic message");
+        }
+    }
+}
+
+pub async fn run_migration() {
     dotenv().ok();
     let client: Result<Client, Box<dyn Error>> = client().await;
     if let Err(err) = client {
@@ -82,7 +122,6 @@ pub(crate) async fn run_migration() {
     collection.insert_one(new_restaurant, None).await.expect("TODO: panic message");
     let new_restaurants = collection.find(None, None).await.expect("TODO: panic message");
     println!("the new restaurant: {:?}", new_restaurants.deserialize_current());
-
 }
 
 pub(crate) async fn file_db(db: Database) -> Result<(), Box<dyn Error>> {
@@ -178,6 +217,7 @@ pub(crate) async fn file_db(db: Database) -> Result<(), Box<dyn Error>> {
             .insert_one(doc.clone(), None)
             .await?;
     }
+    create_indexes().await;
     Ok(())
 }
 

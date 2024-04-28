@@ -20,7 +20,7 @@ struct Claims {
 pub fn create_jwt(username: &str) -> Result<String, JWTTokenCreationError> {
     let jwt_secret = std::env::var("JWT_KEY").unwrap_or("none".to_string());
     let expiration = Utc::now()
-        .checked_add_signed(chrono::TimeDelta::try_minutes(60).expect("32"))
+        .checked_add_signed(chrono::TimeDelta::try_minutes(60*5).expect("32"))
         .expect("valid timestamp")
         .timestamp();
 
