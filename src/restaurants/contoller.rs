@@ -1,7 +1,8 @@
 use std::collections::HashMap;
-use crate::auth::auth::verify_token;
+use crate::{auth::auth::verify_token, db::db::client};
 
 use axum::{extract::Query, Json};
+use dotenv::dotenv;
 use http::{HeaderMap, StatusCode};
 use mongodb::error::Error;
 use serde::{Deserialize, Serialize};
@@ -32,19 +33,43 @@ pub async fn get_restaurant(Query(params): Query<HashMap<String, String>>) -> Re
     };
     let restaurants: Result<Vec<Restaurant>, Error>;
 
+    dotenv().ok();
+
+    let client = client().await;
+    if let Err(err) = client {
+        println!("{:?}", err);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+    let mut session = match client.unwrap().start_session(None).await {
+        Ok(session) => session,
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+
+    session.start_transaction(None).await.unwrap();
+
     if got_kind {
-        restaurants = Restaurant::find_by_name(name).await;
+        restaurants = Restaurant::find_by_name(name, &mut session).await;
     } else {
-        restaurants = Restaurant::find_by_kind(name, kind).await;
+        restaurants = Restaurant::find_by_kind(name, kind, &mut session).await;
     }
 
-    match restaurants {
+    let results = match restaurants {
         Ok(restaurants) => {
             Ok(Json(serde_json::to_value(&restaurants).unwrap()))
             
         },
         Err(_) => return Err(StatusCode::NOT_FOUND),
+    };
+
+    match session.commit_transaction().await {
+        Ok(_) => (),
+        Err(err) => {
+            println!("Error committing transaction {:?}", err);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR)
+        },
     }
+
+    results
 }
 
 pub async fn new_restaurant(headers: HeaderMap, Json(restaurant): Json<Restaurant>) -> Result<Json<Value>, StatusCode> {
@@ -64,15 +89,49 @@ pub async fn new_restaurant(headers: HeaderMap, Json(restaurant): Json<Restauran
 
     println!("{:?}", username);
 
-    match restaurant.save(username).await {
+    dotenv().ok();
+
+    let client = client().await;
+    if let Err(err) = client {
+        println!("{:?}", err);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+    let mut session = match client.unwrap().start_session(None).await {
+        Ok(session) => session,
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+
+    session.start_transaction(None).await.unwrap();
+    
+    let results = match restaurant.save(username, &mut session).await {
         Ok(_) => Ok(Json(serde_json::json!({"message": "Restaurant created"}))),
         Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+
+    match session.commit_transaction().await {
+        Ok(_) => (),
+        Err(err) => {
+            println!("Error committing transaction {:?}", err);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR)
+        },
     }
+    results
 }
 
 
 pub async fn delete_restaurant(Json(restaurant): Json<Restaurant>) -> Result<Json<Value>, StatusCode> {
-    match restaurant.delete().await {
+    let client = client().await;
+    if let Err(err) = client {
+        println!("{:?}", err);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+    let mut session = match client.unwrap().start_session(None).await {
+        Ok(session) => session,
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+
+    session.start_transaction(None).await.unwrap();
+    let results = match restaurant.delete(&mut session).await {
         Ok(result) => {
             println!("Restaurant deleted {:?}", result);
             if result.deleted_count == 0 {
@@ -81,5 +140,14 @@ pub async fn delete_restaurant(Json(restaurant): Json<Restaurant>) -> Result<Jso
             Ok(Json(serde_json::json!({"message": "Restaurant deleted"})))
         },
         Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
-    }
+    };
+
+    match session.commit_transaction().await {
+        Ok(_) => (),
+        Err(err) => {
+            println!("Error committing transaction {:?}", err);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR)
+        },
+    };
+    results
 }

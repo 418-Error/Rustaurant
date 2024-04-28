@@ -1,7 +1,7 @@
 use crate::db::db::client;
 use bson::{doc, oid::ObjectId};
 use dotenv::dotenv;
-use mongodb::{error::Error as MongoError, results::{DeleteResult, InsertOneResult}, Client};
+use mongodb::{error::Error as MongoError, options::SessionOptions, results::{DeleteResult, InsertOneResult}, Client, ClientSession};
 use serde::{Deserialize, Serialize};
 use std::{ error::Error};
 
@@ -428,19 +428,13 @@ pub struct Mhs {
 }
 
 impl Restaurant {
-    pub async fn save(mut self, username: String) -> Result<InsertOneResult, MongoError> {
+    pub async fn save(mut self, username: String, session: &mut ClientSession) -> Result<InsertOneResult, MongoError> {
         self.osm_timestamp = Some(chrono::Utc::now().to_string());
         self.osm_changeset = Some("0".to_string());
         self.osm_version = Some("0".to_string());
         self.osm_user = Some(username);
 
-        dotenv().ok();
-        let client: Result<Client, Box<dyn Error>> = client().await;
-        if let Err(err) = client {
-            println!("error launching client : {}", err);
-            std::process::exit(1);
-        }
-        let db_client = client.unwrap();
+        let db_client = session.client();
         let collection: mongodb::Collection<Restaurant> = db_client
             .database("Rustaurant")
             .collection(get_restaurant_collection(self.clone()).as_str());
@@ -449,14 +443,8 @@ impl Restaurant {
         insert_result
     }
 
-    pub async fn find_by_kind(name: String, kind: String) -> Result<Vec<Restaurant>, MongoError> {
-        dotenv().ok();
-        let client: Result<Client, Box<dyn Error>> = client().await;
-        if let Err(err) = client {
-            println!("error launching client : {}", err);
-            std::process::exit(1);
-        }
-        let db_client = client.unwrap();
+    pub async fn find_by_kind(name: String, kind: String, session: &mut ClientSession) -> Result<Vec<Restaurant>, MongoError> {
+        let db_client = session.client();
         let collection: mongodb::Collection<Restaurant> =
             db_client.database("Rustaurant").collection(kind.as_str());
         let filter = doc! { "name": name };
@@ -481,7 +469,7 @@ impl Restaurant {
         Ok(restaurants)
     }
 
-    pub async fn find_by_name(name: String) -> Result<Vec<Restaurant>, MongoError> {
+    pub async fn find_by_name(name: String, session: &mut ClientSession) -> Result<Vec<Restaurant>, MongoError> {
         let collections = vec![
             "restaurant".to_string(),
             "bar".to_string(),
@@ -492,7 +480,7 @@ impl Restaurant {
         let mut restaurants = Vec::new();
 
         for collection in collections.iter() {
-            let result = Restaurant::find_by_kind(name.clone(), collection.clone()).await;
+            let result = Restaurant::find_by_kind(name.clone(), collection.clone(), session).await;
             match result {
                 Ok(mut restaurant) => {
                     restaurants.append(&mut restaurant);
@@ -503,27 +491,21 @@ impl Restaurant {
         Ok(restaurants)
     }
 
-    pub async fn delete(&self) -> Result<DeleteResult, MongoError> {
+    pub async fn delete(&self, session: &mut ClientSession) -> Result<DeleteResult, MongoError> {
         if self.name.is_none() {
             return Err(MongoError::from(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 "name is required",
             )));
         }
-        dotenv().ok();
-        let client: Result<Client, Box<dyn Error>> = client().await;
-        if let Err(err) = client {
-            println!("error launching client : {}", err);
-            std::process::exit(1);
-        }
-        let db_client = client.unwrap();
+        let db_client = session.client();
         let collection: mongodb::Collection<Restaurant> = db_client
             .database("Rustaurant")
             .collection(get_restaurant_collection(self.clone()).as_str());
         let name = self.name.clone().map_or("".to_string(), |name| name);
         println!("{:?}", name);
         let filter = doc! { "name": name };
-        let delete_result = collection.delete_one(filter, None).await;
+        let delete_result = collection.delete_many(filter, None).await;
         delete_result
     }
 }
