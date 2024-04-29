@@ -11,14 +11,10 @@ use mongodb::error::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-<<<<<<< Updated upstream
-use super::model::Restaurant;
-=======
 use super::{
     model::Restaurant,
     service::{get_accessible_restaurants_agg, get_restaurant_agg_user, get_sports_agg},
 };
->>>>>>> Stashed changes
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetRestaurantPayload {
@@ -206,9 +202,6 @@ pub async fn update_restaurant(
         }
     };
     results
-<<<<<<< Updated upstream
-}
-=======
 }
 
 pub async fn get_restaurant_user() -> Result<Json<Value>, StatusCode> {
@@ -299,4 +292,3 @@ pub async fn get_accessible_restaurants() -> Result<Json<Value>, StatusCode> {
 
     Ok(results)
 }
->>>>>>> Stashed changes

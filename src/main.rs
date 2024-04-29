@@ -5,7 +5,7 @@ use crate::auth::controller::{login, register};
 use crate::auth::middleware::auth_middleware;
 use crate::db::db::client;
 use crate::restaurants::controller::{delete_restaurant, get_accessible_restaurants, get_restaurant, get_restaurant_user, get_sports, new_restaurant, update_restaurant};
-use axum::{middleware, Extension};
+use axum::{middleware};
 use axum::{
     routing::{get, post},
     Router,
@@ -21,6 +21,7 @@ mod auth;
 mod db;
 mod restaurants;
 mod server;
+mod api;
 mod users;
 
 #[tokio::main]
