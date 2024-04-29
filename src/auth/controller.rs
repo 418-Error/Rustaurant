@@ -1,5 +1,4 @@
 use crate::{
-    api::errors::ApiError,
     auth::auth::create_jwt,
     users::{
         model::{RegisterError, UserPayload},
@@ -11,7 +10,7 @@ use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-pub async fn login(Json(payload): Json<LoginPayload>) -> Result<Json<Value>, ApiError> {
+pub async fn login(Json(payload): Json<LoginPayload>) -> Result<Json<Value>, StatusCode> {
     let username = payload.username;
     let password = payload.password;
 
@@ -21,22 +20,14 @@ pub async fn login(Json(payload): Json<LoginPayload>) -> Result<Json<Value>, Api
 
     let user = match user {
         Ok(user) => user,
-        Err(_) => {
-            return Err(ApiError {
-                code: StatusCode::UNAUTHORIZED,
-                message: "Bad username".into(),
-            })
-        }
+        Err(_) => return Err(StatusCode::UNAUTHORIZED),
     };
     now = chrono::Utc::now();
     let is_valid = UserService::verify_password(user, password).await;
 
     println!("Hash comparison took {:?}", chrono::Utc::now() - now);
     if !is_valid {
-        return Err(ApiError {
-            code: StatusCode::UNAUTHORIZED,
-            message: "Bad password".into(),
-        });
+        return Err(StatusCode::UNAUTHORIZED);
     }
 
     now = chrono::Utc::now();

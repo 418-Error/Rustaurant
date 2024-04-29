@@ -11,54 +11,38 @@ use tokio;
 use tower_http::cors::{Any, CorsLayer};
 
 use tower::ServiceBuilder;
-use tracing::info;
+use crate::db::db::run_migration;
 
 mod auth;
 mod db;
 mod restaurants;
 mod server;
 mod users;
-mod routes;
-mod api;
 
 #[tokio::main]
 pub async fn main() {
-    tracing_subscriber::fmt::init();
-    // run_migration().await;
+    run_migration().await;
     launch_server().await;
 }
 
-//TODO: pool de client mongo db
 async fn launch_server() {
-
-    let protected_router = Router::new()
-        .route("/restaurant", 
-            post(new_restaurant)
-            .get(get_restaurant)
-            .delete(delete_restaurant)
-            .patch(update_restaurant))
-        .route("/restaurant/creators", get(get_restaurant_user))
-        .route("/restaurant/sports", get(get_sports))
-        .route("/restaurant/accessibility", get(get_accessible_restaurants))
-        .route_layer(middleware::from_fn(auth_middleware));
-
-    let public_router = Router::new()
+    // Load environment variables from .env file
+    let app = Router::new()
+        .route("/restaurant", post(new_restaurant).get(get_restaurant).delete(delete_restaurant).patch(update_restaurant))
+        .route_layer(middleware::from_fn(auth_middleware))
         .route("/", get(|| async { "Hello, World!" }))
         .route("/register", post(register))
         .route("/login", post(login))
         .layer(
-            ServiceBuilder::new().layer(CorsLayer::very_permissive()),
+            ServiceBuilder::new().layer(CorsLayer::new().allow_origin(Any)),
         );
 
-
-    let app = Router::new().merge(protected_router).merge(public_router);
-       
     let port = std::env::var("PORT").unwrap_or("3000".to_string());
     let listen_address = format!("0.0.0.0:{port}");
 
     let listener = tokio::net::TcpListener::bind(listen_address).await.unwrap();
 
-    info!("Server running on port: {port}");
+    std::println!("Server running on port: {port}");
 
     axum::serve(listener, app.into_make_service())
         .await
