@@ -38,8 +38,17 @@ docker exec -it shard1s1 mongosh --eval "rs.status()"
 
 # setup the  mongos server
 
-docker exec -it mongos mongosh --eval "sh.addShard(\"shard1rs/shard1s1:27017,shard1s2:27017,shard1s3:27017\")"
+docker exec -it mongos1 mongosh --eval "db.createUser(
+ {
+    user: \"admin\",
+    pwd: \"admin\",
+    roles: [
+      { role: \"clusterAdmin\", db: \"admin\" },
+      { role: \"readWriteAnyDatabase\", db: \"admin\" },
+      { role: \"userAdminAnyDatabase\", db: \"admin\" }
+    ]
+  }
+)" admin
 
 # add MONGO_URI to .env file
-
-echo "MONGO_URI=mongodb://admin:admin@127.0.0.1:30000" >.env
+echo "MONGO_URI=mongodb://admin:admin@127.0.0.1:30001" >.env

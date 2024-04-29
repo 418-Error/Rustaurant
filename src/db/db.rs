@@ -77,6 +77,32 @@ pub async fn run_migration() {
     }
     let collection_names = collections.unwrap();
     if !(collection_names.len() > 0){
+<<<<<<< HEAD
+=======
+        println!("Presharding collections...");
+        let mut count = 0;
+        let admin_db = db_client.database("admin");
+        let collections = most_complexe().await.unwrap();
+        for (key, _ ) in collections {
+            // Get the collection
+            let collection: mongodb::Collection<Restaurant> = db_client.database("Rustaurant").collection(key.as_str());
+
+            // Create a hashed index on the _id field
+            let index_doc = doc! { "_id": "hashed" };
+            let index_model = mongodb::IndexModel::builder().keys(index_doc).build();
+            collection.create_index(index_model, None).await?;
+
+            // Shard the collection
+            let shard_collection = doc! {
+                "shardCollection": format!("Rustaurant.{}", key),
+                "key": {
+                    "_id": "hashed"
+                }
+            };
+            admin_db.run_command(shard_collection, None).await?;
+            count += 1;
+        }
+>>>>>>> 79201c7 (feat: correcting up and sharding)
         println!("Loading data into the database...");
         file_db(db_client.database("Rustaurant"))
             .await
@@ -241,6 +267,7 @@ pub async fn most_complexe() -> Result<mongodb::bson::Document, Box<dyn Error>> 
         }
     };
     let mut doc = doc! {};
+    let mut collections = doc! {};
     let json: serde_json::Value = response.json().await?;
     for i in json.get("features").unwrap().as_array().unwrap() {
         let mut previous_key = "".to_string();
@@ -312,6 +339,15 @@ pub async fn most_complexe() -> Result<mongodb::bson::Document, Box<dyn Error>> 
                 concat.push(inter);
             }
         }
+        let amenity = doc.get("amenity");
+        let mut collection_name = "others";
+        if !amenity.is_none() {
+            let amenity = amenity.unwrap().as_str();
+            if !amenity.is_none() {
+                collection_name = amenity.unwrap();
+            }
+        }
+        collections.insert(collection_name, 1);
     }
-    Ok(doc)
+    Ok(collections)
 }
