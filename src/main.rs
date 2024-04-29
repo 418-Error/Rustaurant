@@ -1,5 +1,9 @@
+use std::sync::Arc;
+
+use crate::api::server::AppState;
 use crate::auth::controller::{login, register};
 use crate::auth::middleware::auth_middleware;
+use crate::db::db::client;
 use crate::restaurants::controller::{delete_restaurant, get_accessible_restaurants, get_restaurant, get_restaurant_user, get_sports, new_restaurant, update_restaurant};
 use axum::{middleware, Extension};
 use axum::{
@@ -26,10 +30,30 @@ pub async fn main() {
 }
 
 async fn launch_server() {
-    // Load environment variables from .env file
-    let app = Router::new()
-        .route("/restaurant", post(new_restaurant).get(get_restaurant).delete(delete_restaurant).patch(update_restaurant))
-        .route_layer(middleware::from_fn(auth_middleware))
+    let client = client().await;
+
+    if let Err(err) = client {
+        panic!("Error connecting to database: {:?}", err);
+    }
+
+    let app = AppState {
+        db: client.unwrap()
+    };
+
+    let shared_state = Arc::new(app);
+
+    let protected_router = Router::new()
+        .route("/restaurant", 
+            post(new_restaurant)
+            .get(get_restaurant)
+            .delete(delete_restaurant)
+            .patch(update_restaurant))
+        .route("/restaurant/creators", get(get_restaurant_user))
+        .route("/restaurant/sports", get(get_sports))
+        .route("/restaurant/accessibility", get(get_accessible_restaurants))
+        .route_layer(middleware::from_fn(auth_middleware));
+
+    let public_router = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
         .route("/register", post(register))
         .route("/login", post(login))
@@ -37,6 +61,12 @@ async fn launch_server() {
             ServiceBuilder::new().layer(CorsLayer::new().allow_origin(Any)),
         );
 
+
+    let app = Router::new()
+        .merge(protected_router)
+        .merge(public_router)
+        .with_state(shared_state);
+       
     let port = std::env::var("PORT").unwrap_or("3000".to_string());
     let listen_address = format!("0.0.0.0:{port}");
 
