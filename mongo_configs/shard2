@@ -1,0 +1,9 @@
+sharding:
+    clusterRole: shardsvr
+replication:
+    replSetName: shard2rs
+net:
+  bindIpAll: true
+  port: 27017
+security:
+  keyFile: /etc/mongokey

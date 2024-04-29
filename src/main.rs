@@ -11,6 +11,7 @@ use tokio;
 use tower_http::cors::{Any, CorsLayer};
 
 use tower::ServiceBuilder;
+use crate::db::db::run_migration;
 
 mod auth;
 mod db;
@@ -20,25 +21,7 @@ mod users;
 
 #[tokio::main]
 pub async fn main() {
-    // dotenv().ok();
-    // let client = client().await;
-    // if let Err(err) = client {
-    //     println!("error launching client : {}", err);
-    //     std::process::exit(1);
-    // }
-
-    // let db_client = client.unwrap().database("Rustaurant");
-    // match file_db(db_client).await {
-    //     Ok(_) => {
-    //         create_indexes().await;
-    //         println!("Database connected")
-    //     },
-    //     Err(err) => {
-    //         println!("error connecting to database : {}", err);
-    //         std::process::exit(1);
-    //     }
-    // }
-
+    run_migration().await;
     launch_server().await;
 }
 

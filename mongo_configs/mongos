@@ -1,0 +1,7 @@
+sharding:
+  configDB: cfgrs/configs1:27017,configs2:27017,configs3:27017
+net:
+  bindIpAll: true
+  port: 27017
+security:
+  keyFile: /etc/mongokey
