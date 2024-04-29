@@ -1,13 +1,9 @@
-use bson::{doc, oid::ObjectId, to_bson, to_document, Document};
-use dotenv::dotenv;
-use mongodb::{error::Error as MongoError, options::SessionOptions, results::{DeleteResult, InsertOneResult, UpdateResult}, Client, ClientSession};
+use bson::{doc, oid::ObjectId, to_document, Document};
+use mongodb::{error::Error as MongoError, results::{DeleteResult, InsertOneResult, UpdateResult}, ClientSession};
 use serde::{Deserialize, Serialize};
-use tracing_subscriber::filter;
-use std::{ error::Error};
 
-use super::controller::GetRestaurantPayload;
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, )]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Restaurant {
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "_id")]
@@ -447,7 +443,7 @@ impl Restaurant {
         insert_result
     }
 
-    pub async fn find_by_kind(name: String, kind: String, session: &mut ClientSession) -> Result<Vec<Restaurant>, MongoError> {
+    pub async fn find_by_kind(name: &str, kind: String, session: &mut ClientSession) -> Result<Vec<Restaurant>, MongoError> {
         let filter = doc! { "name": name };
         Restaurant::find(filter, kind, session).await
     }
@@ -463,7 +459,7 @@ impl Restaurant {
         let mut restaurants = Vec::new();
 
         for collection in collections.iter() {
-            let result = Restaurant::find_by_kind(name.clone(), collection.clone(), session).await;
+            let result = Restaurant::find_by_kind(&name, collection.clone(), session).await;
             match result {
                 Ok(mut restaurant) => {
                     restaurants.append(&mut restaurant);
@@ -566,7 +562,12 @@ async fn find_restaurant_collection(filter: Document, session: &mut ClientSessio
         let query_result = collection.find_one(filter.clone(), None).await;
         match query_result {
             Ok(result) => match result {
-                Some(_) => return collection_name.to_string(),
+                Some(_) => {
+                    if collection_name.to_string() == "wheelingChairs" || collection_name.to_string() == "users" {
+                        return "others".to_string();
+                    }
+                    return collection_name.to_string();
+                },
                 None => continue,
             },
             Err(_) => continue,

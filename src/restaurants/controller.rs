@@ -8,7 +8,7 @@ use mongodb::error::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::model::Restaurant;
+use super::{model::Restaurant, service::{get_accessible_restaurants_agg, get_restaurant_agg_user, get_sports_agg}};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetRestaurantPayload {
@@ -50,7 +50,7 @@ pub async fn get_restaurant(Query(params): Query<HashMap<String, String>>) -> Re
     if got_kind {
         restaurants = Restaurant::find_by_name(name, &mut session).await;
     } else {
-        restaurants = Restaurant::find_by_kind(name, kind, &mut session).await;
+        restaurants = Restaurant::find_by_kind(&name, kind, &mut session).await;
     }
 
     let results = match restaurants {
@@ -196,4 +196,94 @@ pub async fn update_restaurant(Json(restaurant): Json<Restaurant>) -> Result<Jso
         },
     };
     results
+}
+
+pub async fn get_restaurant_user() -> Result<Json<Value>, StatusCode> {
+    dotenv().ok();
+    let client = client().await;
+    if let Err(err) = client {
+        println!("{:?}", err);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+    let mut session = match client.unwrap().start_session(None).await {
+        Ok(session) => session,
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+
+    session.start_transaction(None).await.unwrap();
+
+    let restaurants = get_restaurant_agg_user(&mut session).await;
+
+    let results = Json(serde_json::to_value(&restaurants).unwrap());
+
+    match session.commit_transaction().await {
+        Ok(_) => (),
+        Err(err) => {
+            println!("Error committing transaction {:?}", err);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR)
+        },
+    }
+
+    Ok(results)
+}
+
+pub async fn get_sports() -> Result<Json<Value>, StatusCode> {
+    dotenv().ok();
+    let client = client().await;
+    if let Err(err) = client {
+        println!("{:?}", err);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    let mut session = match client.unwrap().start_session(None).await {
+        Ok(session) => session,
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+
+    session.start_transaction(None).await.unwrap();
+
+    let sports = get_sports_agg(&mut session).await;
+
+    let results = Json(serde_json::to_value(&sports).unwrap());
+
+    match session.commit_transaction().await {
+        Ok(_) => (),
+        Err(err) => {
+            println!("Error committing transaction {:?}", err);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR)
+        },
+    }
+
+    Ok(results)
+
+}
+
+pub async fn get_accessible_restaurants() -> Result<Json<Value>, StatusCode> {
+    dotenv().ok();
+    let client = client().await;
+    if let Err(err) = client {
+        println!("{:?}", err);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    let mut session = match client.unwrap().start_session(None).await {
+        Ok(session) => session,
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+
+    session.start_transaction(None).await.unwrap();
+
+    let accessible_restaurants = get_accessible_restaurants_agg(&mut session).await;
+
+    let results = Json(serde_json::to_value(&accessible_restaurants).unwrap());
+
+    match session.commit_transaction().await {
+        Ok(_) => (),
+        Err(err) => {
+            println!("Error committing transaction {:?}", err);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR)
+        },
+    }
+
+    Ok(results)
 }
