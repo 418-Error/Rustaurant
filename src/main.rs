@@ -1,8 +1,6 @@
 use crate::auth::controller::{login, register};
 use crate::auth::middleware::auth_middleware;
 use crate::restaurants::controller::{delete_restaurant, get_accessible_restaurants, get_restaurant, get_restaurant_user, get_sports, new_restaurant, update_restaurant};
-use crate::routes::routes::{graphql_handler, graphql_playground, QueryRoot};
-use async_graphql::{EmptyMutation, EmptySubscription, Schema};
 use axum::{middleware, Extension};
 use axum::{
     routing::{get, post},

@@ -62,17 +62,17 @@ pub async fn create_indexes() {
     }
 }
 
-pub async fn run_migration() -> Result<(), Box<dyn Error>> {
+pub async fn run_migration() {
     dotenv().ok();
     let client: Result<Client, Box<dyn Error>> = client().await;
     if let Err(err) = client {
-        println!("error getting mongo client: {}", err);
+        println!("error running example: {}", err);
         process::exit(1);
     }
     let db_client = client.unwrap();
     let collections = db_client.database("Rustaurant").list_collection_names(None).await;
     if let Err(err) = collections {
-        println!("error getting database: {}", err);
+        println!("error running example: {}", err);
         process::exit(1);
     }
     let collection_names = collections.unwrap();
@@ -81,34 +81,47 @@ pub async fn run_migration() -> Result<(), Box<dyn Error>> {
         file_db(db_client.database("Rustaurant"))
             .await
             .expect("Failed to load data into the database.");
-        println!("Sharding collections...");
-        let mut count = 0;
-        let admin_db = db_client.database("admin");
-        let collections = db_client.database("Rustaurant").list_collection_names(None).await.unwrap();
-        for key in collections {
-            // Get the collection
-            let collection: mongodb::Collection<Restaurant> = db_client.database("Rustaurant").collection(key.as_str());
-
-            // Create a hashed index on the _id field
-            let index_doc = doc! { "_id": "hashed" };
-            let index_model = mongodb::IndexModel::builder().keys(index_doc).build();
-            collection.create_index(index_model, None).await?;
-
-            // Shard the collection
-            let shard_collection = doc! {
-                "shardCollection": format!("Rustaurant.{}", key),
-                "key": {
-                    "_id": "hashed"
-                }
-            };
-            admin_db.run_command(shard_collection, None).await?;
-            count += 1;
-        }
     }
-    else { 
-        println!("Database already exists");
+    let collections = db_client.database("Rustaurant").list_collection_names(None).await;
+    if let Err(err) = collections {
+        println!("error running example: {}", err);
+        process::exit(1);
     }
-    Ok(())
+    let collection_names = collections.unwrap();
+    for i in collection_names {
+        let collection: Collection<Restaurant> =
+            db_client.database("Rustaurant").collection::<Restaurant>(&*i);
+        println!("Collection: {}", i);
+        println!(
+            "Restaurants with an outdoor: {}",
+            collection
+                .count_documents(doc! {"outdoor_seating": "yes"}, None)
+                .await
+                .expect("TODO: panic message")
+        );
+        println!(
+            "Restaurants without an outdoor: {}",
+            collection
+                .count_documents(doc! {"outdoor_seating": null}, None)
+                .await
+                .expect("TODO: panic message")
+        );
+        println!("print a restaurant in this collection: ");
+        let restaurant = collection.find(None, None).await.expect("TODO: panic message");
+        println!("{:?}", restaurant.deserialize_current());
+    }
+    let new_restaurant = Restaurant {
+        contact: None,
+        name: Option::from("Rustaurant".to_string()),
+        outdoor_seating: Some("yes".to_string()),
+        indoor_seating: Some("yes".to_string()),
+        ..Default::default()
+    };
+    let collection: Collection<Restaurant> =
+        db_client.database("Rustaurant").collection::<Restaurant>("restaurant");
+    collection.insert_one(new_restaurant, None).await.expect("TODO: panic message");
+    let new_restaurants = collection.find(None, None).await.expect("TODO: panic message");
+    println!("the new restaurant: {:?}", new_restaurants.deserialize_current());
 }
 
 pub(crate) async fn file_db(db: Database) -> Result<(), Box<dyn Error>> {
