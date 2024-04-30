@@ -1,5 +1,6 @@
 use bson::{doc, Bson, Document};
 use mongodb::{ClientSession, Collection};
+use tracing::error;
 
 use super::model::Restaurant;
 
@@ -60,7 +61,7 @@ async fn agregate(
                 }
             }
             Err(err) => {
-                println!("Error getting user restaurant {:?}", err);
+                error!("Error getting user restaurant {:?}", err);
                 break;
             }
         }

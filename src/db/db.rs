@@ -2,6 +2,7 @@ use dotenv::dotenv;
 use mongodb::bson::doc;
 use mongodb::options::{ClientOptions, ResolverConfig};
 use mongodb::{Client, Collection, Database, IndexModel};
+use tracing::{error, info};
 use std::collections::HashMap;
 use std::{error::Error, process};
 
@@ -39,13 +40,13 @@ pub async fn create_indexes() {
 
     let client: Result<Client, Box<dyn Error>> = client().await;
     if let Err(err) = client {
-        println!("error running example: {}", err);
+        error!("error running example: {}", err);
         process::exit(1);
     }
     let db_client = client.unwrap();
     let collections = db_client.database("Rustaurant").list_collection_names(None).await;
     if let Err(err) = collections {
-        println!("error running example: {}", err);
+        error!("error running example: {}", err);
         process::exit(1);
     }
     let collection_names = collections.unwrap();
@@ -67,18 +68,18 @@ pub async fn run_migration() {
     dotenv().ok();
     let client: Result<Client, Box<dyn Error>> = client().await;
     if let Err(err) = client {
-        println!("error running example: {}", err);
+        error!("error running example: {}", err);
         process::exit(1);
     }
     let db_client = client.unwrap();
     let collections = db_client.database("Rustaurant").list_collection_names(None).await;
     if let Err(err) = collections {
-        println!("error running example: {}", err);
+        error!("error running example: {}", err);
         process::exit(1);
     }
     let collection_names = collections.unwrap();
     if !(collection_names.len() > 1){
-        println!("Presharding collections...");
+        info!("Presharding collections...");
         let mut count = 0;
         let admin_db = db_client.database("admin");
         let collections = most_complexe().await.unwrap();
@@ -101,38 +102,38 @@ pub async fn run_migration() {
             admin_db.run_command(shard_collection, None).await;
             count += 1;
         }
-        println!("Loading data into the database...");
+        info!("Loading data into the database...");
         file_db(db_client.database("Rustaurant"))
             .await
             .expect("Failed to load data into the database.");
     }
     let collections = db_client.database("Rustaurant").list_collection_names(None).await;
     if let Err(err) = collections {
-        println!("error running example: {}", err);
+        error!("error running example: {}", err);
         process::exit(1);
     }
     let collection_names = collections.unwrap();
     for i in collection_names {
         let collection: Collection<Restaurant> =
             db_client.database("Rustaurant").collection::<Restaurant>(&*i);
-        println!("Collection: {}", i);
-        println!(
+        info!("Collection: {}", i);
+        info!(
             "Restaurants with an outdoor: {}",
             collection
                 .count_documents(doc! {"outdoor_seating": "yes"}, None)
                 .await
                 .expect("TODO: panic message")
         );
-        println!(
+        info!(
             "Restaurants without an outdoor: {}",
             collection
                 .count_documents(doc! {"outdoor_seating": null}, None)
                 .await
                 .expect("TODO: panic message")
         );
-        println!("print a restaurant in this collection: ");
+        info!("print a restaurant in this collection: ");
         let restaurant = collection.find(None, None).await.expect("TODO: panic message");
-        println!("{:?}", restaurant.deserialize_current());
+        info!("{:?}", restaurant.deserialize_current());
     }
     let new_restaurant = Restaurant {
         contact: None,
@@ -145,7 +146,7 @@ pub async fn run_migration() {
         db_client.database("Rustaurant").collection::<Restaurant>("restaurant");
     collection.insert_one(new_restaurant, None).await.expect("TODO: panic message");
     let new_restaurants = collection.find(None, None).await.expect("TODO: panic message");
-    println!("the new restaurant: {:?}", new_restaurants.deserialize_current());
+    info!("the new restaurant: {:?}", new_restaurants.deserialize_current());
 }
 
 pub(crate) async fn file_db(db: Database) -> Result<(), Box<dyn Error>> {
@@ -153,7 +154,7 @@ pub(crate) async fn file_db(db: Database) -> Result<(), Box<dyn Error>> {
     let response = match body {
         Ok(response) => response,
         Err(err) => {
-            println!("Error fetching data: {}", err);
+            error!("Error fetching data: {}", err);
             process::exit(1);
         }
     };
@@ -260,7 +261,7 @@ pub async fn most_complexe() -> Result<mongodb::bson::Document, Box<dyn Error>> 
     let response = match body {
         Ok(response) => response,
         Err(err) => {
-            println!("Error fetching data: {}", err);
+            error!("Error fetching data: {}", err);
             process::exit(1);
         }
     };

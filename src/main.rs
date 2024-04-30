@@ -15,6 +15,7 @@ use tokio;
 use tower_http::cors::{Any, CorsLayer};
 
 use tower::ServiceBuilder;
+use tracing::info;
 use crate::db::db::run_migration;
 
 mod auth;
@@ -31,6 +32,7 @@ pub async fn main() {
 }
 
 async fn launch_server() {
+    tracing_subscriber::fmt::init();
     let client = client().await;
 
     if let Err(err) = client {
@@ -73,7 +75,7 @@ async fn launch_server() {
 
     let listener = tokio::net::TcpListener::bind(listen_address).await.unwrap();
 
-    std::println!("Server running on port: {port}");
+    info!("Server running on port: {port}");
 
     axum::serve(listener, app.into_make_service())
         .await

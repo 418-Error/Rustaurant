@@ -2,6 +2,7 @@ use bson::{doc, oid::ObjectId, to_bson, to_document, Document};
 use dotenv::dotenv;
 use mongodb::{error::Error as MongoError, options::SessionOptions, results::{DeleteResult, InsertOneResult, UpdateResult}, Client, ClientSession};
 use serde::{Deserialize, Serialize};
+use tracing::{error, info};
 use tracing_subscriber::filter;
 use std::{ error::Error};
 
@@ -488,13 +489,13 @@ impl Restaurant {
                     match restaurant {
                         Ok(restaurant) => restaurants.push(restaurant),
                         Err(err) => {
-                            println!("Error getting restaurant: {}", err);
+                            error!("Error getting restaurant: {}", err);
                         }
                     }
                 }
             }
             Err(err) => {
-                println!("Error getting restaurant: {}", err);
+                error!("Error getting restaurant: {}", err);
             }
         }
         Ok(restaurants)
@@ -513,16 +514,15 @@ impl Restaurant {
         let collection: mongodb::Collection<Restaurant> = db_client
             .database("Rustaurant")
             .collection(find_restaurant_collection(filter, session).await.as_str());
-        println!("{:?}", name);
         let filter = doc! { "name": name };
         let delete_result = collection.delete_many(filter, None).await;
+        info!("Deleted restaurant {:?}", delete_result);
         delete_result
     }
 
     pub async fn update(mut self, session: &mut ClientSession) -> Result<UpdateResult, MongoError> {
         let id = self.id.clone().unwrap();
         let filter_id = doc! { "_id": id};
-        println!("{:?}", filter_id);
 
         let collection_name = find_restaurant_collection(filter_id.clone(), session).await;
 
@@ -530,7 +530,6 @@ impl Restaurant {
 
         let restaurant = Restaurant::find(filter_id.clone(), collection_name.clone(), session).await;
 
-        println!("{:?}", restaurant);
 
         let restaurant = match restaurant {
             Ok(restaurants) => {
@@ -553,6 +552,7 @@ impl Restaurant {
         let to_doc = to_document(&self).unwrap();
         let update = doc! { "$set": to_doc };
         let update_result = collection.update_one(filter_id, update, None).await;
+        info!("Updated restaurant {:?}", update_result);
         update_result
     }
 }

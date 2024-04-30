@@ -6,6 +6,7 @@ use bson::{doc, oid::ObjectId};
 use dotenv::dotenv;
 use mongodb::Client;
 use serde::{Deserialize, Serialize};
+use tracing::{error, info};
 
 use crate::db::db::client;
 
@@ -43,7 +44,7 @@ impl User {
         dotenv().ok();
         let client: Result<Client, Box<dyn Error>> = client().await;
         if let Err(err) = client {
-            println!("error launching client : {}", err);
+            error!("error launching client : {}", err);
             std::process::exit(1);
         }
         let db_client = client.unwrap();
@@ -60,7 +61,7 @@ impl User {
         let distinct_usernames = distinct_usernames_result.len();
 
         if distinct_usernames > 0 {
-            println!("Username already exists {}", distinct_usernames);
+            error!("Username already exists {}", distinct_usernames);
             return Err(RegisterError::UsernameAlreadyExistsError(
                 "Username already exists".to_string(),
             ));
@@ -100,7 +101,7 @@ impl User {
         dotenv().ok();
         let client: Result<Client, Box<dyn Error>> = client().await;
         if let Err(err) = client {
-            println!("error launching client : {}", err);
+            error!("error launching client : {}", err);
             std::process::exit(1);
         }
         let db_client = client.unwrap();
@@ -110,21 +111,19 @@ impl User {
 
         let filter= doc!{"username": username};
 
-        println!("{:?}", filter);
-
         let user = match collection
             .find_one(filter, None)
             .await {
             Ok(user) => user,
             Err(err) => {
-                println!("Failed to find user: {}", err);
+                error!("Failed to find user: {}", err);
                 return Err(FindError::FailedToFindUserError(
                     format!("Failed to find user: {}", err),
                 ));
             }
         };
 
-        println!("{:?}", user);
+        info!("found {:?}", user);
 
         match user {
             Some(user) => Ok(user),

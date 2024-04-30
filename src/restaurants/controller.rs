@@ -10,6 +10,7 @@ use http::{HeaderMap, StatusCode};
 use mongodb::error::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::{error, info};
 
 use super::{
     model::Restaurant,
@@ -63,7 +64,7 @@ pub async fn get_restaurant(
     match session.commit_transaction().await {
         Ok(_) => (),
         Err(err) => {
-            println!("Error committing transaction {:?}", err);
+            error!("Error committing transaction {:?}", err);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     }
@@ -90,7 +91,7 @@ pub async fn new_restaurant(
         Err(_) => return Err(StatusCode::UNAUTHORIZED),
     };
 
-    println!("{:?}", username);
+    info!("User {} is creating a new restaurant", username);
 
     dotenv().ok();
 
@@ -109,7 +110,7 @@ pub async fn new_restaurant(
     match session.commit_transaction().await {
         Ok(_) => (),
         Err(err) => {
-            println!("Error committing transaction {:?}", err);
+            error!("Error committing transaction {:?}", err);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     }
@@ -117,14 +118,11 @@ pub async fn new_restaurant(
 }
 
 pub async fn delete_restaurant(
+    State(state): State<Arc<AppState>>,
     Json(restaurant): Json<Restaurant>,
 ) -> Result<Json<Value>, StatusCode> {
-    let client = client().await;
-    if let Err(err) = client {
-        println!("{:?}", err);
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    }
-    let mut session = match client.unwrap().start_session(None).await {
+    
+    let mut session = match state.db.start_session(None).await {
         Ok(session) => session,
         Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
     };
@@ -132,19 +130,22 @@ pub async fn delete_restaurant(
     session.start_transaction(None).await.unwrap();
     let results = match restaurant.delete(&mut session).await {
         Ok(result) => {
-            println!("Restaurant deleted {:?}", result);
+            info!("Restaurant deleted {:?}", result);
             if result.deleted_count == 0 {
                 return Err(StatusCode::NOT_FOUND);
             }
             Ok(Json(serde_json::json!({"message": "Restaurant deleted"})))
         }
-        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(_) => {
+            let _ = session.abort_transaction().await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        },
     };
 
     match session.commit_transaction().await {
         Ok(_) => (),
         Err(err) => {
-            println!("Error committing transaction {:?}", err);
+            error!("Error committing transaction {:?}", err);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
@@ -152,17 +153,14 @@ pub async fn delete_restaurant(
 }
 
 pub async fn update_restaurant(
+    State(state): State<Arc<AppState>>,
     Json(restaurant): Json<Restaurant>,
 ) -> Result<Json<Value>, StatusCode> {
-    let client = client().await;
-    if let Err(err) = client {
-        println!("{:?}", err);
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    }
-    let mut session = match client.unwrap().start_session(None).await {
+  
+    let mut session = match state.db.start_session(None).await {
         Ok(session) => session,
         Err(err) => {
-            println!("Error starting session {:}", err);
+            error!("Error starting session {:}", err);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
@@ -182,14 +180,14 @@ pub async fn update_restaurant(
     session.start_transaction(None).await.unwrap();
     let results = match restaurant.update(&mut session).await {
         Ok(result) => {
-            println!("Restaurant updated {:?}", result);
+            info!("Restaurant updated {:?}", result);
             if result.modified_count == 0 {
                 return Err(StatusCode::NOT_FOUND);
             }
             Ok(Json(serde_json::json!({"message": "Restaurant updated"})))
         }
         Err(err) => {
-            println!("Error updating restaurant {:?}", err);
+            error!("Error updating restaurant {:?}", err);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
@@ -197,21 +195,18 @@ pub async fn update_restaurant(
     match session.commit_transaction().await {
         Ok(_) => (),
         Err(err) => {
-            println!("Error committing transaction {:?}", err);
+            error!("Error committing transaction {:?}", err);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
     results
 }
 
-pub async fn get_restaurant_user() -> Result<Json<Value>, StatusCode> {
-    dotenv().ok();
-    let client = client().await;
-    if let Err(err) = client {
-        println!("{:?}", err);
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    }
-    let mut session = match client.unwrap().start_session(None).await {
+pub async fn get_restaurant_user(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Value>, StatusCode> {
+    
+    let mut session = match state.db.start_session(None).await {
         Ok(session) => session,
         Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
     };
@@ -225,7 +220,7 @@ pub async fn get_restaurant_user() -> Result<Json<Value>, StatusCode> {
     match session.commit_transaction().await {
         Ok(_) => (),
         Err(err) => {
-            println!("Error committing transaction {:?}", err);
+            error!("Error committing transaction {:?}", err);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     }
@@ -233,15 +228,10 @@ pub async fn get_restaurant_user() -> Result<Json<Value>, StatusCode> {
     Ok(results)
 }
 
-pub async fn get_sports() -> Result<Json<Value>, StatusCode> {
-    dotenv().ok();
-    let client = client().await;
-    if let Err(err) = client {
-        println!("{:?}", err);
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    }
-
-    let mut session = match client.unwrap().start_session(None).await {
+pub async fn get_sports(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Value>, StatusCode> {
+    let mut session = match state.db.start_session(None).await {
         Ok(session) => session,
         Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
     };
@@ -255,7 +245,7 @@ pub async fn get_sports() -> Result<Json<Value>, StatusCode> {
     match session.commit_transaction().await {
         Ok(_) => (),
         Err(err) => {
-            println!("Error committing transaction {:?}", err);
+            error!("Error committing transaction {:?}", err);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     }
@@ -263,15 +253,10 @@ pub async fn get_sports() -> Result<Json<Value>, StatusCode> {
     Ok(results)
 }
 
-pub async fn get_accessible_restaurants() -> Result<Json<Value>, StatusCode> {
-    dotenv().ok();
-    let client = client().await;
-    if let Err(err) = client {
-        println!("{:?}", err);
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    }
-
-    let mut session = match client.unwrap().start_session(None).await {
+pub async fn get_accessible_restaurants(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Value>, StatusCode> {
+    let mut session = match state.db.start_session(None).await {
         Ok(session) => session,
         Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
     };
@@ -285,7 +270,7 @@ pub async fn get_accessible_restaurants() -> Result<Json<Value>, StatusCode> {
     match session.commit_transaction().await {
         Ok(_) => (),
         Err(err) => {
-            println!("Error committing transaction {:?}", err);
+            error!("Error committing transaction {:?}", err);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     }
