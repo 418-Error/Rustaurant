@@ -21,7 +21,6 @@ use crate::db::db::run_migration;
 mod auth;
 mod db;
 mod restaurants;
-mod server;
 mod api;
 mod users;
 

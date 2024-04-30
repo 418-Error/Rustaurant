@@ -109,7 +109,7 @@ impl User {
             db_client.database("Rustaurant").collection("users");
 
 
-        let filter= doc!{"username": username};
+        let filter= doc!{"username": username.clone()};
 
         let user = match collection
             .find_one(filter, None)
@@ -123,13 +123,17 @@ impl User {
             }
         };
 
-        info!("found {:?}", user);
 
         match user {
-            Some(user) => Ok(user),
-            None => Err(FindError::FailedToFindUserError(
+            Some(user) => {
+                info!("User {} connected", user.username);
+                Ok(user)
+            },
+            None => {
+                error!("Failed to connect user : {}", username);
+                Err(FindError::FailedToFindUserError(
                 "Failed to find user in the database.".to_string(),
-            )),
+            ))},
         }
     }
 }

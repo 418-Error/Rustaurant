@@ -1,14 +1,9 @@
-use bson::{doc, oid::ObjectId, to_bson, to_document, Document};
-use dotenv::dotenv;
-use mongodb::{error::Error as MongoError, options::SessionOptions, results::{DeleteResult, InsertOneResult, UpdateResult}, Client, ClientSession};
+use bson::{doc, oid::ObjectId, to_document, Document};
+use mongodb::{error::Error as MongoError, results::{DeleteResult, InsertOneResult, UpdateResult}, ClientSession};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
-use tracing_subscriber::filter;
-use std::{ error::Error};
 
-use super::controller::GetRestaurantPayload;
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, )]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize )]
 #[serde(rename_all = "camelCase")]
 pub struct Restaurant {
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "_id")]

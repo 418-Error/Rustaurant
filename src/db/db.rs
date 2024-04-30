@@ -80,7 +80,6 @@ pub async fn run_migration() {
     let collection_names = collections.unwrap();
     if !(collection_names.len() > 1){
         info!("Presharding collections...");
-        let mut count = 0;
         let admin_db = db_client.database("admin");
         let collections = most_complexe().await.unwrap();
         for (key, _ ) in collections {
@@ -90,7 +89,7 @@ pub async fn run_migration() {
             // Create a hashed index on the _id field
             let index_doc = doc! { "_id": "hashed" };
             let index_model = mongodb::IndexModel::builder().keys(index_doc).build();
-            collection.create_index(index_model, None).await;
+            let _ = collection.create_index(index_model, None).await;
 
             // Shard the collection
             let shard_collection = doc! {
@@ -99,8 +98,7 @@ pub async fn run_migration() {
                     "_id": "hashed"
                 }
             };
-            admin_db.run_command(shard_collection, None).await;
-            count += 1;
+            let _ = admin_db.run_command(shard_collection, None).await;
         }
         info!("Loading data into the database...");
         file_db(db_client.database("Rustaurant"))
@@ -246,15 +244,15 @@ pub(crate) async fn file_db(db: Database) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub async fn add_restaurant(db: Database, restaurant: Restaurant) -> Result<(), Box<dyn Error>> {
-    let mut collection = "others";
-    if !restaurant.amenity.is_none() {
-        collection = restaurant.amenity.as_ref().unwrap();
-    }
-    let db_collection = db.collection(collection);
-    db_collection.insert_one(restaurant, None).await?;
-    Ok(())
-}
+// pub async fn add_restaurant(db: Database, restaurant: Restaurant) -> Result<(), Box<dyn Error>> {
+//     let mut collection = "others";
+//     if !restaurant.amenity.is_none() {
+//         collection = restaurant.amenity.as_ref().unwrap();
+//     }
+//     let db_collection = db.collection(collection);
+//     db_collection.insert_one(restaurant, None).await?;
+//     Ok(())
+// }
 
 pub async fn most_complexe() -> Result<mongodb::bson::Document, Box<dyn Error>> {
     let body = reqwest::get("https://data.montpellier3m.fr/sites/default/files/ressources/OSM_Metropole_restauration_bar.json").await;

@@ -1,4 +1,4 @@
-use crate::{api::server::AppState, auth::auth::verify_token, db::db::client};
+use crate::{api::server::AppState, auth::auth::verify_token};
 use std::{collections::HashMap, sync::Arc};
 
 use axum::{
