@@ -34,6 +34,7 @@ pub async fn create_indexes() {
         ("pub", vec!["name"]),
         ("restaurant", vec!["name"]),
         ("users", vec!["username"]),
+        ("wheelingChairs", vec!["name", "largeur_assise"]),
     ]);
 
     let client: Result<Client, Box<dyn Error>> = client().await;
@@ -76,9 +77,7 @@ pub async fn run_migration() {
         process::exit(1);
     }
     let collection_names = collections.unwrap();
-    if !(collection_names.len() > 0){
-<<<<<<< HEAD
-=======
+    if !(collection_names.len() > 1){
         println!("Presharding collections...");
         let mut count = 0;
         let admin_db = db_client.database("admin");
@@ -90,7 +89,7 @@ pub async fn run_migration() {
             // Create a hashed index on the _id field
             let index_doc = doc! { "_id": "hashed" };
             let index_model = mongodb::IndexModel::builder().keys(index_doc).build();
-            collection.create_index(index_model, None).await?;
+            collection.create_index(index_model, None).await;
 
             // Shard the collection
             let shard_collection = doc! {
@@ -99,10 +98,9 @@ pub async fn run_migration() {
                     "_id": "hashed"
                 }
             };
-            admin_db.run_command(shard_collection, None).await?;
+            admin_db.run_command(shard_collection, None).await;
             count += 1;
         }
->>>>>>> 79201c7 (feat: correcting up and sharding)
         println!("Loading data into the database...");
         file_db(db_client.database("Rustaurant"))
             .await

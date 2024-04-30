@@ -8,72 +8,193 @@ services:
   configs1:
     container_name: configs1
     image: mongo
-    command: mongod --configsvr --replSet cfgrs --port 27017 --dbpath /data/db --bind_ip_all
     volumes:
       - configs1:/data/db
+      - ./mongo_configs/configsvr:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    entrypoint: [ 'mongod', '--config', '/etc/mongod.conf' ]
+    ports:
+      - "50000:27017"
     networks:
       - mongodb-net
 
   configs2:
     container_name: configs2
     image: mongo
-    command: mongod --configsvr --replSet cfgrs --port 27017 --dbpath /data/db --bind_ip_all
     volumes:
       - configs2:/data/db
+      - ./mongo_configs/configsvr:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    entrypoint: [ 'mongod', '--config', '/etc/mongod.conf' ]
+    ports:
+      - "50001:27017"
     networks:
       - mongodb-net
 
   configs3:
     container_name: configs3
     image: mongo
-    command: mongod --configsvr --replSet cfgrs --port 27017 --dbpath /data/db --bind_ip_all
     volumes:
       - configs3:/data/db
+      - ./mongo_configs/configsvr:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    entrypoint: [ 'mongod', '--config', '/etc/mongod.conf' ]
+    ports:
+      - "50002:27017"
     networks:
       - mongodb-net
 
   shard1s1:
     container_name: shard1s1
     image: mongo
-    command: mongod --shardsvr --replSet shard1rs --port 27017 --dbpath /data/db --bind_ip_all
     volumes:
       - shard1s1:/data/db
+      - ./mongo_configs/shard1:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    entrypoint: [ 'mongod', '--config', '/etc/mongod.conf' ]
+    ports:
+      - "60001:27017"
+    networks:
+      - mongodb-net
+
+  shard2s1:
+    container_name: shard2s1
+    image: mongo
+    volumes:
+      - shard2s1:/data/db
+      - ./mongo_configs/shard2:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    entrypoint: [ 'mongod', '--config', '/etc/mongod.conf' ]
+    ports:
+      - "60002:27017"
+    networks:
+      - mongodb-net
+
+  shard3s1:
+    container_name: shard3s1
+    image: mongo
+    volumes:
+      - shard3s1:/data/db
+      - ./mongo_configs/shard3:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    entrypoint: [ 'mongod', '--config', '/etc/mongod.conf' ]
+    ports:
+      - "60003:27017"
     networks:
       - mongodb-net
 
   shard1s2:
     container_name: shard1s2
     image: mongo
-    command: mongod --shardsvr --replSet shard1rs --port 27017 --dbpath /data/db --bind_ip_all
     volumes:
       - shard1s2:/data/db
+      - ./mongo_configs/shard1:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    entrypoint: [ 'mongod', '--config', '/etc/mongod.conf' ]
+    ports:
+      - "60004:27017"
+    networks:
+      - mongodb-net
+
+  shard2s2:
+    container_name: shard2s2
+    image: mongo
+    volumes:
+      - shard2s2:/data/db
+      - ./mongo_configs/shard2:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    entrypoint: [ 'mongod', '--config', '/etc/mongod.conf' ]
+    ports:
+      - "60005:27017"
+    networks:
+      - mongodb-net
+
+  shard3s2:
+    container_name: shard3s2
+    image: mongo
+    volumes:
+      - shard3s2:/data/db
+      - ./mongo_configs/shard3:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    entrypoint: [ 'mongod', '--config', '/etc/mongod.conf' ]
+    ports:
+      - "60006:27017"
     networks:
       - mongodb-net
 
   shard1s3:
     container_name: shard1s3
     image: mongo
-    command: mongod --shardsvr --replSet shard1rs --port 27017 --dbpath /data/db --bind_ip_all
     volumes:
       - shard1s3:/data/db
+      - ./mongo_configs/shard1:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    entrypoint: [ 'mongod', '--config', '/etc/mongod.conf' ]
+    ports:
+      - "60007:27017"
     networks:
       - mongodb-net
 
-  mongos:
-    container_name: mongos
+  shard2s3:
+    container_name: shard2s3
     image: mongo
-    command: mongod --auth && eckongos --configdb cfgrs/configs1:27017,configs2:27017,configs3:27017 --port 27017 --bind_ip_all
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh --port 27017'
-      interval: 1m30s
-      timeout: 30s
-      retries: 5
-      start_period: 30s
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin
+    volumes:
+      - shard2s3:/data/db
+      - ./mongo_configs/shard2:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    entrypoint: [ 'mongod', '--config', '/etc/mongod.conf' ]
     ports:
-      - 30000:27017
+      - "60008:27017"
+    networks:
+      - mongodb-net
+
+  shard3s3:
+    container_name: shard3s3
+    image: mongo
+    volumes:
+      - shard3s3:/data/db
+      - ./mongo_configs/shard3:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    entrypoint: [ 'mongod', '--config', '/etc/mongod.conf' ]
+    ports:
+      - "60009:27017"
+    networks:
+      - mongodb-net
+
+
+  mongos1:
+    container_name: mongos1
+    image: mongo
+    ports:
+      - "30001:27017"
+    entrypoint: [ 'mongos', '--config', '/etc/mongod.conf' ]
+    volumes:
+      - ./mongo_configs/mongos:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    networks:
+      - mongodb-net
+
+  mongos2:
+    container_name: mongos2
+    image: mongo
+    ports:
+      - "30002:27017"
+    entrypoint: [ 'mongos', '--config', '/etc/mongod.conf' ]
+    volumes:
+      - ./mongo_configs/mongos:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
+    networks:
+      - mongodb-net
+
+  mongos3:
+    container_name: mongos3
+    image: mongo
+    ports:
+      - "30003:27017"
+    entrypoint: [ 'mongos', '--config', '/etc/mongod.conf' ]
+    volumes:
+      - ./mongo_configs/mongos:/etc/mongod.conf
+      - ./mongo_configs/mongokey:/etc/mongokey
     networks:
       - mongodb-net
 
@@ -82,5 +203,11 @@ volumes:
   configs2: {}
   configs3: {}
   shard1s1: {}
+  shard2s1: {}
+  shard3s1: {}
   shard1s2: {}
+  shard2s2: {}
+  shard3s2: {}
   shard1s3: {}
+  shard2s3: {}
+  shard3s3: {}

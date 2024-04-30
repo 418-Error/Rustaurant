@@ -9,8 +9,17 @@ interface WheelingChair {
 }
 
 
+function getMongoURI(): string {
+  const fs = require('fs');
+  const path = require('path');
+  const dotenv = require('dotenv');
+  const envPath = path.join(__dirname, '..', '..', '.env');
+  const env = dotenv.parse(fs.readFileSync(envPath));
+  return env.MONGO_URI;
+}
+
 async function save(wheelingChairs: any[]): Promise<void> {
-  const client = new MongoClient("mongodb://admin:admin@127.0.0.1:30000");
+  const client = new MongoClient(getMongoURI());
 
   try {
     // Connect to the MongoDB client

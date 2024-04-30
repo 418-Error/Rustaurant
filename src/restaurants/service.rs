@@ -99,6 +99,13 @@ pub async fn get_sports_agg(session: &mut ClientSession) -> Vec<Document> {
 pub async fn get_accessible_restaurants_agg(session: &mut ClientSession) -> Vec<Document> {
     let accessible_restaurants_pipeline = vec![
         doc! {
+            "$match": doc! {
+                "largeur_assise": doc! {
+                    "$type": "double"
+                }
+            }
+        },
+        doc! {
             "$lookup": doc! {
                 "from": "restaurant",
                 "let": doc! {
@@ -134,5 +141,5 @@ pub async fn get_accessible_restaurants_agg(session: &mut ClientSession) -> Vec<
             }
         }
     ];
-    agregate(session, "restaurant".to_string(),accessible_restaurants_pipeline).await
+    agregate(session, "wheelingChairs".to_string(),accessible_restaurants_pipeline).await
 }
